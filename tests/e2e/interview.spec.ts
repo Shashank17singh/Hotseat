@@ -1,6 +1,24 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+// Chrome's built-in fake mic only beeps briefly, too little to count as speech, so tests supply a steady tone.
+async function fakeMic(page: Page, gain: number) {
+  await page.addInitScript((level) => {
+    const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      const stream = await original(constraints);
+      const context = new AudioContext();
+      const tone = context.createOscillator();
+      const volume = context.createGain();
+      volume.gain.value = level;
+      const output = context.createMediaStreamDestination();
+      tone.connect(volume).connect(output);
+      tone.start();
+      return new MediaStream([...stream.getVideoTracks(), ...output.stream.getAudioTracks()]);
+    };
+  }, gain);
+}
+
 async function startInterview(page: Page, role = "Backend Engineer") {
   await page.goto("/setup");
   await page.getByLabel("Role you are applying for").fill(role);
@@ -67,6 +85,7 @@ test("device check shows the camera and a moving mic level", async ({ page }) =>
 });
 
 test("a full voice interview reaches a scored report with a playable clip", async ({ page }) => {
+  await fakeMic(page, 0.3);
   await startInterview(page);
   await expect.poll(() => page.locator("video[aria-label='Your camera']").evaluate((el: HTMLVideoElement) => el.videoWidth)).toBeGreaterThan(0);
 
@@ -193,20 +212,7 @@ test("a failed interviewer reply can be retried or passed", async ({ page }) => 
 });
 
 test("a silent recording is stopped before it reaches the AI", async ({ page }) => {
-  await page.addInitScript(() => {
-    const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-    navigator.mediaDevices.getUserMedia = async (constraints) => {
-      const stream = await original(constraints);
-      const context = new AudioContext();
-      const hum = context.createOscillator();
-      const gain = context.createGain();
-      gain.gain.value = 0.002;
-      const quiet = context.createMediaStreamDestination();
-      hum.connect(gain).connect(quiet);
-      hum.start();
-      return new MediaStream([...stream.getVideoTracks(), ...quiet.stream.getAudioTracks()]);
-    };
-  });
+  await fakeMic(page, 0.002);
   const aiCalls: string[] = [];
   page.on("request", (request) => {
     if (/api\/(transcribe|turn)/.test(request.url())) aiCalls.push(request.url());
@@ -296,6 +302,7 @@ test("a visitor's key is sent as a header and data can be wiped", async ({ page 
   await page.goto("/settings");
   await page.getByRole("button", { name: "Delete all my data" }).click();
   await page.getByRole("button", { name: "Delete everything" }).click();
+  await expect(page.getByText("All interviews and recordings were deleted.")).toBeVisible();
   await page.goto("/history");
   await expect(page.getByText("No interviews yet")).toBeVisible();
 });
