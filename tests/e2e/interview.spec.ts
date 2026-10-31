@@ -309,6 +309,53 @@ for (const path of ["/", "/setup", "/history", "/settings"]) {
   });
 }
 
+test("the top bar fits a 320px phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto("/settings");
+  const right = await page.locator(".topbar__links").evaluate((el) => el.getBoundingClientRect().right);
+  expect(right).toBeLessThanOrEqual(320);
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+});
+
+async function reachReport(page: Page, role: string) {
+  await startInterview(page, role);
+  await page.getByRole("button", { name: "Begin interview" }).click();
+  await waitForTurn(page);
+  await page.getByRole("button", { name: "Type instead" }).click();
+  await page.getByLabel("Your answer").fill("A typed answer.");
+  await page.getByRole("button", { name: "Send answer" }).click();
+  await waitForTurn(page);
+  await page.getByRole("button", { name: "End early" }).click();
+  await page.getByRole("button", { name: "End interview" }).click();
+  await page.waitForURL(/\/report\//);
+  await expect(page.getByTestId("overall")).toBeVisible({ timeout: 15_000 });
+}
+
+test("a report with no strengths leaves out that heading", async ({ page }) => {
+  await page.route("**/api/report", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), strengths: [] } });
+  });
+  await reachReport(page, "Weak Candidate");
+  await expect(page.getByRole("heading", { name: "What worked" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "What to fix" })).toBeVisible();
+});
+
+test("a printed report is readable and shows every question", async ({ page }) => {
+  await reachReport(page, "Print Tester");
+  await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
+  await page.emulateMedia({ media: "print" });
+  await expect(page.getByText("Not reached").first()).toBeVisible();
+  expect(await page.locator("details[open]").count()).toBe(3);
+  const luminance = await page.locator(".page__sub").evaluate((el) => {
+    const probe = document.createElement("canvas").getContext("2d") as CanvasRenderingContext2D;
+    probe.fillStyle = getComputedStyle(el).color;
+    probe.fillRect(0, 0, 1, 1);
+    return [...probe.getImageData(0, 0, 1, 1).data].slice(0, 3).reduce((a, b) => a + b, 0) / 3;
+  });
+  expect(luminance).toBeLessThan(120);
+});
+
 test("security headers are set", async ({ request }) => {
   const response = await request.get("/");
   const headers = response.headers();

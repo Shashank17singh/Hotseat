@@ -130,6 +130,11 @@ export async function completeJson<S extends z.ZodType>(options: {
 // Asking Whisper to keep disfluencies matters: without this prompt it tidies away the fillers we measure.
 const VERBATIM_PROMPT = "Umm, let me think, uh, I mean, you know, so, hmm, kind of, sort of.";
 const NO_SPEECH_LIMIT = 0.6;
+// Whisper's stock output for silence. Its no-speech score does not reliably flag these, and none is an answer.
+const SILENCE_PHRASES = new Set([
+  "thankyou", "thankyouverymuch", "thanks", "thanksforwatching", "thankyouforwatching",
+  "you", "bye", "byebye", "ok", "okay", "hmm", "um", "uh", "pleasesubscribe",
+]);
 
 const lettersOnly = (text: string) => text.toLowerCase().replace(/[^a-z]/g, "");
 
@@ -138,7 +143,8 @@ export function spokenText(result: { text: string; segments?: { text: string; no
   const text = result.segments
     ? result.segments.filter((s) => s.no_speech_prob < NO_SPEECH_LIMIT).map((s) => s.text).join("").trim()
     : result.text.trim();
-  return lettersOnly(VERBATIM_PROMPT).includes(lettersOnly(text)) ? "" : text;
+  const letters = lettersOnly(text);
+  return SILENCE_PHRASES.has(letters) || lettersOnly(VERBATIM_PROMPT).includes(letters) ? "" : text;
 }
 
 export async function transcribe(audio: File, apiKey?: string) {

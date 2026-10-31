@@ -37,9 +37,12 @@ describe("heardSpeech", () => {
     expect(heardSpeech([...Array(50).fill(0.01), ...Array(6).fill(0.2)])).toBe(true);
   });
 
+  it("treats true digital silence as silence", () => {
+    expect(heardSpeech(Array(50).fill(0))).toBe(false);
+  });
+
   it("does not judge when the meter never ran", () => {
     expect(heardSpeech([])).toBeNull();
-    expect(heardSpeech(Array(50).fill(0))).toBeNull();
   });
 });
 

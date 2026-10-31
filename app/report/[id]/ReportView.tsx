@@ -127,6 +127,13 @@ function FullReport({ session, report, onPracticeAgain }: { session: Session; re
   const facing = measured.flatMap((m) => (m.facingRatio === undefined ? [] : [m.facingRatio]));
   const facingAverage = facing.length ? Math.round((facing.reduce((a, b) => a + b, 0) / facing.length) * 100) : null;
 
+  // Collapsed questions would otherwise be left out of a printed report.
+  useEffect(() => {
+    const expand = () => document.querySelectorAll("details").forEach((item) => { item.open = true; });
+    window.addEventListener("beforeprint", expand);
+    return () => window.removeEventListener("beforeprint", expand);
+  }, []);
+
   function download() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(session, null, 2)], { type: "application/json" }));
     const link = document.createElement("a");
@@ -167,16 +174,22 @@ function FullReport({ session, report, onPracticeAgain }: { session: Session; re
         <HeatCurve points={points} caption={`Scores by question: ${points.map((p) => `${p.label} ${p.score}`).join(", ")}`} />
       </section>
 
-      <section className="section split">
-        <div>
-          <h2>What worked</h2>
-          <ul className="list">{report.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
-        </div>
-        <div>
-          <h2>What to fix</h2>
-          <ul className="list">{report.improvements.map((item) => <li key={item}>{item}</li>)}</ul>
-        </div>
-      </section>
+      {(report.strengths.length > 0 || report.improvements.length > 0) && (
+        <section className="section split">
+          {report.strengths.length > 0 && (
+            <div>
+              <h2>What worked</h2>
+              <ul className="list">{report.strengths.map((item) => <li key={item}>{item}</li>)}</ul>
+            </div>
+          )}
+          {report.improvements.length > 0 && (
+            <div>
+              <h2>What to fix</h2>
+              <ul className="list">{report.improvements.map((item) => <li key={item}>{item}</li>)}</ul>
+            </div>
+          )}
+        </section>
+      )}
 
       {report.competencies.length > 0 && (
         <section className="section">

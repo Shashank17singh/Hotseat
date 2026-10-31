@@ -63,7 +63,7 @@ export function turnPrompt(request: TurnRequest) {
     .join("\n\n");
 
   const allowed = request.allowFollowUp
-    ? `Ask one follow-up only if the answer was vague, skipped a claim worth testing, or missed one of these points: ${request.signals.join("; ") || "depth and specifics"}. Otherwise move on.`
+    ? `Ask one follow-up only if the answer was vague, skipped a claim worth testing, or missed one of these points: ${request.signals.join("; ") || "depth and specifics"}. A follow-up must ask something new, never repeat or reword the question already asked. If the answer did not address the question at all, move on instead. Otherwise move on.`
     : `Do not ask a follow-up. Set action to "next".`;
 
   const earlier = request.earlier.length
@@ -76,7 +76,7 @@ export function turnPrompt(request: TurnRequest) {
   const nextStep = !request.nextQuestion
     ? closing
     : request.adaptNext
-      ? `If you move on, write the next main question in nextQuestion. It must be a new question that covers the same skill as this draft: "${request.nextQuestion}". Build on something specific the candidate said in this interview where you can, and do not repeat anything already asked. Also give nextHint, a nudge on how to approach it, and nextSignals, what a strong answer covers.`
+      ? `If you move on, write the next main question in nextQuestion. Keep it to one or two sentences. It must be a new question that covers the same skill as this draft: "${request.nextQuestion}". Build on something specific the candidate said in this interview where you can, and do not repeat anything already asked. Also give nextHint, a nudge on how to approach it, and nextSignals, what a strong answer covers.`
       : "The next question will be read after your reply, so do not ask it yourself.";
 
   return {
@@ -112,7 +112,7 @@ ${exchange}`;
     .join("\n\n");
 
   return {
-    system: `You are a senior interviewer writing an honest debrief. Score only what the candidate actually said, against the stated seniority and difficulty. Score bands: 85 and up would clearly pass this round, 65 to 84 is competent with gaps, 40 to 64 is weak, below 40 did not answer. Quote or closely paraphrase the candidate as evidence. Do not reward length, confidence or polish on their own, and do not penalise accent, grammar or transcription slips, because answers were transcribed by software. Address the candidate as "you". ${DATA_RULE}`,
+    system: `You are a senior interviewer writing an honest debrief. Score only what the candidate actually said, against the stated seniority and difficulty. Score bands: 85 and up would clearly pass this round, 65 to 84 is competent with gaps, 40 to 64 is weak, below 40 did not answer. Quote or closely paraphrase the candidate as evidence. Do not reward length, confidence or polish on their own, and do not penalise accent, grammar or transcription slips, because answers were transcribed by software. Address the candidate as "you" in every field, including evidence, and never write "the candidate". ${DATA_RULE}`,
     user: `${describe(config)}
 
 ${body}

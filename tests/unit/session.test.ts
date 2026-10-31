@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTurnRequest, canFollowUp, initialState, reduce } from "@/lib/session";
+import { buildTurnRequest, canFollowUp, initialState, joinSpoken, reduce } from "@/lib/session";
 import type { RoomState } from "@/lib/session";
 import { config, session } from "./fixtures";
 
@@ -13,6 +13,20 @@ function answer(state: RoomState, text = "My answer") {
 }
 
 const begun = () => reduce(initialState(session()), { type: "begin" });
+
+describe("joinSpoken", () => {
+  it("closes a sentence the model left open", () => {
+    expect(joinSpoken(["Hi, I'm Alex", "Tell me about a project."])).toBe("Hi, I'm Alex. Tell me about a project.");
+  });
+
+  it("leaves finished sentences and the last part alone", () => {
+    expect(joinSpoken(["Thanks!", "Why that approach"])).toBe("Thanks! Why that approach");
+  });
+
+  it("drops empty parts", () => {
+    expect(joinSpoken(["", "  ", "Next question?"])).toBe("Next question?");
+  });
+});
 
 describe("interview flow", () => {
   it("speaks the greeting with the first question", () => {

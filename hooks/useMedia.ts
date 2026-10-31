@@ -104,13 +104,19 @@ export function useLevel(stream: MediaStream | null, onLevel: (level: number) =>
     const source = context.createMediaStreamSource(stream);
     source.connect(analyser);
     const samples = new Float32Array(analyser.fftSize);
+    // Browsers can start an AudioContext suspended until the first click on the page.
+    const resume = () => void context.resume().catch(() => undefined);
+    resume();
+    window.addEventListener("pointerdown", resume);
     const timer = window.setInterval(() => {
+      if (context.state !== "running") return;
       analyser.getFloatTimeDomainData(samples);
       const rms = Math.sqrt(samples.reduce((sum, s) => sum + s * s, 0) / samples.length);
       callback.current(Math.min(1, rms * 4));
     }, 100);
     return () => {
       window.clearInterval(timer);
+      window.removeEventListener("pointerdown", resume);
       source.disconnect();
       void context.close();
     };

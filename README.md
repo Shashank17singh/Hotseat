@@ -214,3 +214,7 @@ To deploy your own copy for free, import this repository at [vercel.com/new](htt
 - Vercel's free Hobby plan is for non-commercial use only.
 
 ---
+
+## License
+
+MIT. See [LICENSE](LICENSE).

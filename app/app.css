@@ -7,7 +7,11 @@
 @import url("./styles/tokens.css");
 @import url("./styles/base.css");
 
-:root { --color-print-paper: oklch(99% 0.003 80); --color-print-ink: oklch(18% 0.01 40); }
+:root {
+  --color-print-paper: oklch(99% 0.003 80); --color-print-ink: oklch(18% 0.01 40); --color-print-muted: oklch(42% 0.02 50);
+  --color-print-well: oklch(95% 0.006 80); --color-print-rule: oklch(20% 0.01 40 / 0.18);
+  --heat-print-5: oklch(62% 0.17 56); --heat-print-6: oklch(52% 0.15 70);
+}
 
 @font-face { font-family: "Boska"; src: url("/fonts/boska-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
 @font-face { font-family: "Geist"; src: url("/fonts/geist.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
@@ -187,9 +191,17 @@ textarea.input { min-height: 120px; line-height: 1.55; resize: vertical; }
   .wide-only { display: none; }
   .narrow-only { display: inline; }
 }
+@media (max-width: 23rem) {
+  .topbar__links .btn { display: none; }
+}
 @media print {
   .topbar, .btn-row, .summary-bar { display: none; }
-  body { background: var(--color-print-paper); color: var(--color-print-ink); }
-  .review__body { display: grid; }
+  :root {
+    --color-paper: var(--color-print-paper); --color-paper-2: var(--color-print-well); --color-paper-3: var(--color-print-well);
+    --color-ink: var(--color-print-ink); --color-ink-2: var(--color-print-ink); --color-muted: var(--color-print-muted);
+    --color-rule: var(--color-print-rule); --heat-5: var(--heat-print-5); --heat-6: var(--heat-print-6);
+  }
+  .page { max-width: none; padding: 0; }
   video, audio { display: none; }
+  .review, .section { break-inside: avoid; }
 }

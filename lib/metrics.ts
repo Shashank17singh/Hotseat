@@ -24,10 +24,9 @@ export function countFillers(text: string) {
   return { total, found };
 }
 
-// True or false when the recording's levels can be trusted. Null when every sample is exactly zero,
-// which means the meter never ran (a suspended AudioContext) rather than that the room was silent.
+// Null when the meter took no samples, which means it never ran rather than that the room was silent.
 export function heardSpeech(levels: number[], threshold = 0.06, minSamples = 5) {
-  if (levels.every((level) => level === 0)) return null;
+  if (levels.length === 0) return null;
   return levels.filter((level) => level >= threshold).length >= minSamples;
 }
 

@@ -132,6 +132,15 @@ describe("spokenText", () => {
     expect(spokenText({ text, segments: [{ text, no_speech_prob: 0.1 }] })).toBe("");
   });
 
+  it.each(["Thank you.", "Thanks for watching!", "you", "Bye."])("treats Whisper's stock silence output %s as silence", (text) => {
+    expect(spokenText({ text, segments: [{ text, no_speech_prob: 0.1 }] })).toBe("");
+  });
+
+  it("keeps an answer that merely contains those words", () => {
+    const text = "Thank you. I rebuilt the importer.";
+    expect(spokenText({ text, segments: [{ text, no_speech_prob: 0.1 }] })).toBe(text);
+  });
+
   it("keeps real answers that contain fillers", () => {
     const text = "Um, I mean, I rebuilt the importer, you know.";
     expect(spokenText({ text, segments: [{ text, no_speech_prob: 0.05 }] })).toBe(text);

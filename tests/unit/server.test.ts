@@ -115,6 +115,15 @@ describe("prompts", () => {
     expect(system).toContain("never invent or assume");
   });
 
+  it("stops follow-ups repeating the question", () => {
+    const { user } = turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: true, adaptNext: false, earlier: [] });
+    expect(user).toContain("never repeat or reword");
+  });
+
+  it("requires the report to address the candidate directly", () => {
+    expect(reportPrompt({ config, questions: [question(1)], turns: [turn(1)] }).system).toContain('never write "the candidate"');
+  });
+
   it("requests the chosen number of questions", () => {
     expect(planPrompt({ ...config, questionCount: 8 }).user).toContain("Plan exactly 8 questions");
   });

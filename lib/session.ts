@@ -116,6 +116,15 @@ function patchLastTurn(session: Session, patch: Partial<Turn>): Session {
   return { ...session, turns, updatedAt: Date.now() };
 }
 
+// Model text often has no closing punctuation, which runs the voice and subtitles into the next sentence.
+export function joinSpoken(parts: string[]) {
+  return parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part, i, all) => (i < all.length - 1 && !/[.!?]$/.test(part) ? `${part}.` : part))
+    .join(" ");
+}
+
 function clearDraft() {
   return { draft: "", draftCode: "", draftMetrics: undefined, hintShown: false };
 }
@@ -135,7 +144,7 @@ export function reduce(state: RoomState, action: RoomAction): RoomState {
       return {
         ...state,
         phase: "asking",
-        spoken: `${session.plan.greeting} ${question.question}`,
+        spoken: joinSpoken([session.plan.greeting, question.question]),
         session: { ...session, turns: [...session.turns, turn], updatedAt: Date.now() },
         error: undefined,
       };
@@ -221,7 +230,7 @@ function applyReply(state: RoomState, reply: TurnReply): RoomState {
       ...state,
       ...clearDraft(),
       phase: "asking",
-      spoken: [reply.acknowledgement, followUp].filter(Boolean).join(" "),
+      spoken: joinSpoken([reply.acknowledgement, followUp]),
       session: { ...session, turns: [...session.turns, turn], updatedAt: Date.now() },
       error: undefined,
     };
@@ -247,7 +256,7 @@ function applyReply(state: RoomState, reply: TurnReply): RoomState {
     ...clearDraft(),
     phase: "asking",
     questionIndex: questionIndex + 1,
-    spoken: [reply.acknowledgement, asked.question].filter(Boolean).join(" "),
+    spoken: joinSpoken([reply.acknowledgement, asked.question]),
     session: {
       ...session,
       plan: { ...session.plan, questions },
