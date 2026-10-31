@@ -1,98 +1,216 @@
-# Hotseat
+<div align="center">
 
-A spoken AI mock interview. Upload a resume, pick a role and difficulty, and answer out loud to an interviewer that asks follow-ups. You get a scored report with feedback on every answer.
+# Hotseat - AI Mock Interview Platform
+
+**A spoken mock interview that builds questions from your resume, presses you with follow-ups, and scores every answer. Runs in the browser with your mic and camera.**
+
+```
+Interviewer: "You led the move from cron jobs to a queue. What failed first?"
+You:         "Retries. We hit the same job twice until we added idempotency keys."
+Interviewer: "How did you test that the keys actually held under load?"
+```
+
+Each question builds on what you just said, and the report scores only what you actually answered.
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Groq](https://img.shields.io/badge/Groq-openai--gpt--oss--120b-F55036?style=for-the-badge&logoColor=white)](https://groq.com/)
+[![Whisper](https://img.shields.io/badge/Whisper-Speech%20to%20Text-412991?style=for-the-badge&logoColor=white)](https://console.groq.com/docs/speech-to-text)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://hotseat-black-chi.vercel.app/)
+
+</div>
+
+---
+
+## Overview
+
+Hotseat is a mock interview you take out loud. Upload a resume, pick a role and difficulty, and an AI interviewer asks questions, listens to your answers and follows up on what you said. At the end you get a scored report with written feedback, a stronger version of each answer, and measured delivery stats such as pace and filler words.
+
+There are no accounts and no database. Sessions live in your browser, and video never leaves your device.
+
+---
+
+### Interview Pipeline
+
+```mermaid
+graph TD
+    subgraph "Setup"
+    A[Resume PDF / DOCX / TXT] -->|unpdf / mammoth| B(Raw Text)
+    B -->|Groq LLM + Zod Schema| C[Structured Profile]
+    D[Role, Difficulty, Job Description] --> E{Interview Plan}
+    C --> E
+    end
+
+    subgraph "Interview Loop"
+    E --> F[Question Read Aloud with Subtitles]
+    F --> G[Mic and Camera Recording]
+    G -->|Silence Check| H(Whisper Transcript)
+    H --> I{Groq Interviewer}
+    I -->|Follow-Up or Adapted Question| F
+    end
+
+    subgraph "Report"
+    I --> J[Scores and Feedback]
+    G --> K[Pace, Fillers, Pauses]
+    J --> L[Report and History in Browser]
+    K --> L
+    end
+
+    classDef io fill:#f9f0ff,stroke:#8a2be2,stroke-width:2px,color:#000;
+    classDef core fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
+    classDef logic fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000;
+
+    class A,D,L io;
+    class B,C,F,G,H,J,K core;
+    class E,I logic;
+```
 
 ## Features
 
-### Setup
+|                               |                                                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Resume-Based Questions**    | Upload a PDF, DOCX or TXT, or paste the text. Questions are tied to your own projects and roles       |
+| **Role and Job Targeting**    | 22 preset roles or any job title, with seniority, company and an optional job description             |
+| **Four Difficulty Levels**    | Easy to Bar Raiser, changing the questions, follow-up depth and time target                           |
+| **Interview Formats**         | Behavioural, technical, system design, HR screening or mixed, with three interviewer personas         |
+| **Voice Interviewer**         | Questions are read aloud, with subtitles you can turn off                                             |
+| **Mic and Camera**            | Device check, self-view, mic and camera toggles, and live captions in Chrome and Edge                 |
+| **Adaptive Questions**        | Each question builds on your earlier answers, and new interviews avoid repeating past ones            |
+| **Silence Detection**         | Silent recordings are caught before they reach the AI, so it only reacts to what you actually said    |
+| **Editable Transcripts**      | Review and correct each transcript before sending, or type your answer instead                        |
+| **Code Questions**            | A code box for questions that ask you to write code                                                   |
+| **Scored Reports**            | Per-question and competency scores, written feedback and a stronger version of each answer            |
+| **Measured Delivery**         | Pace, filler words and pauses, measured from your recordings and kept separate from your score        |
+| **Answer Replay**             | Replay each recorded answer next to its feedback                                                      |
+| **History and Export**        | Score trend over time, print to PDF, export as JSON, and delete all your data in one click            |
+| **Resilient Sessions**        | Reloading resumes the interview, and a failed reply can be retried or passed                          |
+| **Bring Your Own Key**        | Visitors can add their own free Groq key in Settings, which skips the site's hourly limit             |
 
-- Resume upload (PDF, DOCX, TXT) or pasted text, read into a structured profile
-- 22 preset roles, or any job title, with seniority, company and job description
-- Four difficulty levels that change the questions, follow-up depth and time target
-- Five interview types, three interviewer personas, and 3, 5 or 8 questions
-- Mic, camera and speaker check
+---
 
-### The interview
+## Tech Stack
 
-- The interviewer reads questions aloud, with subtitles you can turn off
-- Each question builds on your earlier answers, and new interviews avoid repeating past ones
-- Answers are recorded and transcribed, with an editable transcript before sending
-- Live captions in Chrome and Edge
-- Self-view camera, plus mic and camera toggles
-- Adaptive follow-ups, capped by difficulty
-- Silent recordings are caught, so the interviewer only reacts to what you actually said
-- A code editor for coding questions
-- Typing as an alternative to speaking, hints, skip, and ending early
-- Reloading the page resumes the interview
-- Space starts and stops an answer
+| Component          | Technology                                                 |
+| ------------------ | ---------------------------------------------------------- |
+| Framework          | Next.js 16 (App Router), React 19, TypeScript              |
+| Interview LLM      | Groq - `openai/gpt-oss-120b` and `openai/gpt-oss-20b`      |
+| LLM Fallback       | Gemini (optional), via its OpenAI-compatible API           |
+| Speech to Text     | Groq Whisper - `whisper-large-v3-turbo`                    |
+| Text to Speech     | Browser Web Speech API                                     |
+| Live Captions      | Browser SpeechRecognition API                              |
+| Recording          | MediaRecorder and Web Audio API                            |
+| Camera Check       | MediaPipe Face Landmarker, running on the device           |
+| Resume Parsing     | unpdf and mammoth                                          |
+| Schema Validation  | Zod                                                        |
+| Storage            | IndexedDB in the browser, via idb-keyval                   |
+| Testing            | Vitest and Playwright                                      |
+| Hosting            | Vercel                                                     |
 
-### The report
+---
 
-- Per-question scores, a score curve, and competency ratings with evidence
-- Written feedback and a stronger version of each answer
-- Measured delivery: pace, filler words and pauses, kept separate from the score
-- Replay of each recorded answer
-- Print to PDF, and export as JSON
-- History with a score trend
+## Project Structure
 
-### Privacy
+```
+Hotseat/
+├── app/
+│   ├── api/              # plan, turn, report, resume, transcribe, health
+│   ├── interview/        # The interview room
+│   ├── report/[id]/      # Scored report
+│   ├── setup/            # Resume, role, format and device check
+│   ├── history/          # Past sessions and score trend
+│   ├── settings/         # API key, voice, subtitles, privacy
+│   └── page.tsx          # Landing page
+├── components/           # Top bar, score curve, notices
+├── hooks/                # Mic and camera, recording, camera check
+├── lib/
+│   ├── server/           # LLM providers, prompts, resume parsing, rate limit
+│   ├── session.ts        # Interview state machine
+│   ├── score.ts          # Report scoring
+│   ├── metrics.ts        # Pace, fillers, pauses, silence check
+│   ├── speech.ts         # Voice, subtitles and live captions
+│   └── storage.ts        # Browser storage
+├── tests/
+│   ├── unit/             # Vitest
+│   └── e2e/              # Playwright, with a fake camera and mic
+└── .env.example
+```
 
-- Video never leaves the browser
-- There are no accounts or database: sessions live in the browser's IndexedDB
-- One action deletes everything
+---
 
-## Stack
+## Setup and Installation
 
-Next.js 16 and TypeScript. Groq runs the interview model and Whisper transcription, with Gemini as an optional chat fallback. The interviewer's voice uses the browser's built-in speech. MediaPipe runs the optional camera check on the device.
+### Prerequisites
 
-## Run it locally
+- Node.js 20+
+- A [Groq API key](https://console.groq.com/keys)
 
-Requires Node 20 or later.
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Shashank17singh/Hotseat.git
+cd Hotseat
+```
+
+### 2. Install dependencies
 
 ```bash
 npm install
-cp .env.example .env.local   # then add GROQ_API_KEY
+```
+
+### 3. Set your Groq API key
+
+```bash
+cp .env.example .env.local
+# then edit .env.local and add: GROQ_API_KEY=your_api_key_here
+```
+
+To try the interface without a key, set `LLM_PROVIDER=mock` in `.env.local` instead.
+
+### 4. Start the app
+
+```bash
 npm run dev
 ```
 
-Open <http://localhost:3000>. To try the interface without a key, set `LLM_PROVIDER=mock` in `.env.local`.
+Open <http://localhost:3000>, set up an interview and allow mic and camera access.
 
-## Deploy for free
+---
 
-The recommended setup is Vercel Hobby with a free Groq key. No database is needed.
-
-1. Get a key at [console.groq.com/keys](https://console.groq.com/keys).
-2. Push this folder to a GitHub repository.
-3. Import the repository at [vercel.com/new](https://vercel.com/new). It detects Next.js.
-4. Add `GROQ_API_KEY` under Environment Variables, then deploy.
-
-Vercel's HTTPS matters here: browsers only allow microphone and camera access on HTTPS or localhost.
-
-Limits to know:
-
-| Service | Limit | Effect |
-| --- | --- | --- |
-| Vercel Hobby | Non-commercial use only | Move to a paid plan or another host if you charge for this |
-| Vercel Hobby | 4.5 MB request body | Audio is compressed to fit about 20 minutes per answer. Video is never uploaded |
-| Vercel Hobby | Usage over the free allowance can pause a feature for up to 30 days | Watch usage if traffic grows |
-| Groq free plan | Per-model rate limits, shown under Settings, Limits in your Groq console | Busy periods return a clear rate-limit message. Add `GEMINI_API_KEY` as a chat fallback |
-
-To protect the shared key, each visitor gets `RATE_LIMIT_PER_HOUR` requests. This limit is held in memory per server instance, so it slows casual abuse but is not a strict quota. Visitors can bring their own free key in Settings, which skips the limit. Free plans have no card attached, so the worst case is hitting a limit, not a bill.
-
-## Tests
+## Running the Tests
 
 ```bash
-npm test                # unit tests
+npm test                        # Unit tests
+npx playwright install chromium # Once, for the browser tests
 npm run build
-npm run e2e             # browser tests with a fake camera and microphone
+npm run e2e                     # Browser tests with a fake camera and mic
 ```
 
-Browser tests run against scripted AI replies, so they need no key. Run `npx playwright install chromium` once first.
+Browser tests run on scripted AI replies, so they need no API key.
 
-## Known limits
+---
 
-- Browser voices vary by device, and some sound robotic.
+## Deployment
+
+- **Live URL:** <https://hotseat-black-chi.vercel.app/>
+
+To deploy your own copy for free, import this repository at [vercel.com/new](https://vercel.com/new) and add `GROQ_API_KEY` under Environment Variables. No database is needed. Vercel's HTTPS matters here, because browsers only allow mic and camera access on HTTPS or localhost.
+
+| Variable              | Required | Purpose                                                    |
+| --------------------- | -------- | ---------------------------------------------------------- |
+| `GROQ_API_KEY`        | Yes      | Runs the interview and speech-to-text                      |
+| `GEMINI_API_KEY`      | No       | Chat fallback when Groq is rate limited                    |
+| `RATE_LIMIT_PER_HOUR` | No       | Hourly requests per visitor on the shared key. Default 60  |
+
+---
+
+## Known Limitations
+
 - Transcription and scoring are English only.
+- The interviewer's voice comes from the browser, so it varies by device and can sound robotic.
+- Speech-to-text has no fallback, so voice answers stop if Groq is rate limited. Typing still works.
+- History is stored per browser and does not sync between devices. Export reports you want to keep.
+- The rate limit is held in memory per server instance, so it slows casual abuse but is not a strict quota.
 - The camera-facing figure estimates head direction, not eye contact, and is never scored.
-- History does not sync between devices.
-- A browser's IndexedDB can be cleared by the user or by storage pressure, so export reports you want to keep.
+- Vercel's free Hobby plan is for non-commercial use only.
+
+---
