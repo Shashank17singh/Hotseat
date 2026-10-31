@@ -81,6 +81,9 @@ export const TurnReplySchema = z.object({
   acknowledgement: text(300).catch(""),
   action: z.enum(["follow_up", "next"]).catch("next"),
   followUp: text(400).catch(""),
+  nextQuestion: text(600).catch(""),
+  nextHint: text(300).catch(""),
+  nextSignals: z.array(text(160)).max(6).catch([]),
 });
 export type TurnReply = z.infer<typeof TurnReplySchema>;
 
@@ -153,6 +156,12 @@ export const TurnRequestSchema = z.object({
   signals: z.array(z.string().max(160)).max(6).default([]),
   exchange: z.array(TurnSchema).min(1).max(6),
   nextQuestion: z.string().max(600).optional(),
+  // Spoken questions are rewritten to build on the conversation; coding exercises stay as planned.
+  adaptNext: z.boolean().default(false),
+  earlier: z
+    .array(z.object({ question: z.string().max(1200), answer: z.string().max(800) }))
+    .max(12)
+    .default([]),
   allowFollowUp: z.boolean(),
 });
 export type TurnRequest = z.infer<typeof TurnRequestSchema>;
@@ -160,6 +169,7 @@ export type TurnRequest = z.infer<typeof TurnRequestSchema>;
 export const PlanRequestSchema = z.object({
   config: ConfigSchema,
   profile: ProfileSchema.optional(),
+  avoid: z.array(z.string().max(600)).max(40).default([]),
 });
 
 export const ReportRequestSchema = z.object({

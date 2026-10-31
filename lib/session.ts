@@ -9,6 +9,17 @@ export type Phase =
   | "thinking" // waiting for the interviewer's reply
   | "finished";
 
+const EARLIER_TURNS = 8;
+const EARLIER_ANSWER_CHARS = 800;
+const SKIP_REPLY: TurnReply = {
+  acknowledgement: "That's fine, let's move on.",
+  action: "next",
+  followUp: "",
+  nextQuestion: "",
+  nextHint: "",
+  nextSignals: [],
+};
+
 export type RoomState = {
   session: Session;
   phase: Phase;
@@ -71,12 +82,18 @@ export function canFollowUp(session: Session, questionId: string) {
 export function buildTurnRequest(state: RoomState): TurnRequest {
   const { session, questionIndex } = state;
   const question = session.plan.questions[questionIndex];
+  const next = session.plan.questions[questionIndex + 1];
   return {
     config: session.config,
     question: question.question,
     signals: question.signals,
     exchange: session.turns.filter((t) => t.questionId === question.id),
-    nextQuestion: session.plan.questions[questionIndex + 1]?.question,
+    nextQuestion: next?.question,
+    adaptNext: next?.answerFormat === "spoken",
+    earlier: session.turns
+      .filter((t) => t.questionId !== question.id && t.answer)
+      .slice(-EARLIER_TURNS)
+      .map((t) => ({ question: t.prompt, answer: t.answer.slice(0, EARLIER_ANSWER_CHARS) })),
     allowFollowUp: canFollowUp(session, question.id),
   };
 }
@@ -162,14 +179,9 @@ export function reduce(state: RoomState, action: RoomAction): RoomState {
       };
     }
 
+    // A skip has no answer to react to, so it moves on without asking the model to respond to nothing.
     case "skip":
-      return {
-        ...state,
-        ...clearDraft(),
-        phase: "thinking",
-        session: patchLastTurn(session, { skipped: true }),
-        error: undefined,
-      };
+      return applyReply({ ...state, session: patchLastTurn(session, { skipped: true }) }, SKIP_REPLY);
 
     case "reply":
       return applyReply(state, action.reply);
@@ -227,14 +239,32 @@ function applyReply(state: RoomState, reply: TurnReply): RoomState {
     };
   }
 
-  const turn = makeTurn(session, next, "main", next.question);
+  const asked = adaptQuestion(next, reply);
+  const questions = session.plan.questions.map((q) => (q.id === asked.id ? asked : q));
+  const turn = makeTurn(session, asked, "main", asked.question);
   return {
     ...state,
     ...clearDraft(),
     phase: "asking",
     questionIndex: questionIndex + 1,
-    spoken: [reply.acknowledgement, next.question].filter(Boolean).join(" "),
-    session: { ...session, turns: [...session.turns, turn], updatedAt: Date.now() },
+    spoken: [reply.acknowledgement, asked.question].filter(Boolean).join(" "),
+    session: {
+      ...session,
+      plan: { ...session.plan, questions },
+      turns: [...session.turns, turn],
+      updatedAt: Date.now(),
+    },
     error: undefined,
+  };
+}
+
+function adaptQuestion(planned: PlannedQuestion, reply: TurnReply): PlannedQuestion {
+  const question = reply.nextQuestion.trim();
+  if (planned.answerFormat !== "spoken" || question.length < 5) return planned;
+  return {
+    ...planned,
+    question,
+    hint: reply.nextHint.trim() || planned.hint,
+    signals: reply.nextSignals.length ? reply.nextSignals : planned.signals,
   };
 }

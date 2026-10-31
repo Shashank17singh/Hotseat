@@ -17,7 +17,7 @@ async function waitForTurn(page: Page) {
 async function speakAnswer(page: Page) {
   await page.getByRole("button", { name: "Start answer" }).click();
   await expect(page.getByTestId("room-state")).toHaveText("Recording your answer");
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2500);
   await page.getByRole("button", { name: "Stop answer" }).click();
   await expect(page.getByRole("button", { name: "Send answer" })).toBeVisible();
 }
@@ -89,6 +89,7 @@ test("a full voice interview reaches a scored report with a playable clip", asyn
   await page.getByRole("button", { name: "Send code only" }).click();
 
   await waitForTurn(page);
+  await expect(page.getByTestId("question")).toHaveText("Building on what you said, how would you test that approach?");
   await page.getByRole("button", { name: "Show hint (costs 5 points)" }).click();
   await expect(page.getByText("Describe the situation")).toBeVisible();
   await page.getByRole("button", { name: "Type instead" }).click();
@@ -181,12 +182,105 @@ test("a failed interviewer reply can be retried or passed", async ({ page }) => 
   await startInterview(page, "Sales Representative");
   await page.getByRole("button", { name: "Begin interview" }).click();
   await waitForTurn(page);
-  await page.getByRole("button", { name: "Skip" }).click();
+  await page.getByRole("button", { name: "Type instead" }).click();
+  await page.getByLabel("Your answer").fill("An answer that needs a reply.");
+  await page.getByRole("button", { name: "Send answer" }).click();
   await expect(page.locator(".notice[role=alert]")).toContainText("did not respond");
   await page.unroute("**/api/turn");
   await page.getByRole("button", { name: "Next question" }).click();
   await waitForTurn(page);
   await expect(page.getByTestId("question")).toContainText("reverses a string");
+});
+
+test("a silent recording is stopped before it reaches the AI", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      const stream = await original(constraints);
+      const context = new AudioContext();
+      const hum = context.createOscillator();
+      const gain = context.createGain();
+      gain.gain.value = 0.002;
+      const quiet = context.createMediaStreamDestination();
+      hum.connect(gain).connect(quiet);
+      hum.start();
+      return new MediaStream([...stream.getVideoTracks(), ...quiet.stream.getAudioTracks()]);
+    };
+  });
+  const aiCalls: string[] = [];
+  page.on("request", (request) => {
+    if (/api\/(transcribe|turn)/.test(request.url())) aiCalls.push(request.url());
+  });
+  await startInterview(page, "Tech Lead");
+  await page.getByRole("button", { name: "Begin interview" }).click();
+  await waitForTurn(page);
+  await page.getByRole("button", { name: "Start answer" }).click();
+  await page.waitForTimeout(2000);
+  await page.getByRole("button", { name: "Stop answer" }).click();
+
+  await expect(page.locator(".notice[role=alert]")).toContainText("didn't hear anything");
+  await expect(page.getByTestId("room-state")).toHaveText("Your turn");
+  await expect(page.getByRole("button", { name: "Start answer" })).toBeVisible();
+  await expect(page.getByTestId("question")).toContainText("part 1");
+  expect(aiCalls).toEqual([]);
+});
+
+test("skipping moves on without asking the AI to reply", async ({ page }) => {
+  const turnCalls: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/turn")) turnCalls.push(request.url());
+  });
+  await startInterview(page, "Support Lead");
+  await page.getByRole("button", { name: "Begin interview" }).click();
+  await waitForTurn(page);
+  await page.getByRole("button", { name: "Skip" }).click();
+  await waitForTurn(page);
+  await expect(page.getByTestId("question")).toContainText("reverses a string");
+  expect(turnCalls).toEqual([]);
+});
+
+test("subtitles follow the interviewer's voice and can be turned off", async ({ page }) => {
+  await page.addInitScript(() => {
+    type Spoken = { text: string; onend: () => void };
+    const log: string[] = [];
+    Object.assign(window, { spokenLog: log });
+    window.speechSynthesis.getVoices = () => [{ voiceURI: "fake", lang: "en-US", name: "Fake" } as SpeechSynthesisVoice];
+    window.SpeechSynthesisUtterance = class { constructor(public text: string) {} } as never;
+    window.speechSynthesis.speak = (utterance) => {
+      const spoken = utterance as unknown as Spoken;
+      log.push(spoken.text);
+      setTimeout(() => spoken.onend(), 900);
+    };
+  });
+  await startInterview(page, "Solutions Engineer");
+  await page.getByRole("button", { name: "Begin interview" }).click();
+
+  const subtitle = page.getByTestId("subtitle");
+  await expect(subtitle).toContainText("Hello, I'm Maya");
+  await expect(subtitle).not.toContainText("part 1");
+  await expect(subtitle).toContainText("part 1");
+  await waitForTurn(page);
+  await expect(subtitle).toContainText("Hello, I'm Maya");
+  await expect(subtitle).toContainText("part 1");
+  expect(await page.evaluate(() => (window as unknown as { spokenLog: string[] }).spokenLog)).toHaveLength(2);
+
+  await page.getByRole("button", { name: "Subtitles on" }).click();
+  await expect(subtitle).toBeHidden();
+  await page.reload();
+  await page.getByRole("button", { name: "Resume interview" }).click();
+  await waitForTurn(page);
+  await expect(subtitle).toBeHidden();
+  await expect(page.getByRole("button", { name: "Subtitles off" })).toBeVisible();
+});
+
+test("a new interview for the same role tells the AI what was already asked", async ({ page }) => {
+  await startInterview(page, "Platform Engineer");
+  await page.goto("/setup");
+  const request = page.waitForRequest("**/api/plan");
+  await page.getByLabel("Role you are applying for").fill("platform engineer");
+  await page.getByRole("button", { name: "Start interview" }).click();
+  const body = (await request).postDataJSON();
+  expect(body.avoid).toContain("Tell me about a hard problem you solved, part 1.");
 });
 
 test("a visitor's key is sent as a header and data can be wiped", async ({ page }) => {

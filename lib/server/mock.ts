@@ -31,8 +31,9 @@ export function mockCompletion(task: Task, user: string): unknown {
       const canFollow = !user.includes("Do not ask a follow-up");
       return {
         acknowledgement: "Thank you.",
-        action: canFollow && user.includes("part 1") ? "follow_up" : "next",
+        action: canFollow && /Main question: .*part 1/.test(user) ? "follow_up" : "next",
         followUp: "What was the measurable result?",
+        nextQuestion: user.includes("write the next main question") ? "Building on what you said, how would you test that approach?" : "",
       };
     }
     case "report": {

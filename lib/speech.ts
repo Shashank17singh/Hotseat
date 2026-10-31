@@ -6,36 +6,56 @@ export function englishVoices() {
 }
 
 export function splitSentences(text: string) {
-  return text.match(/[^.!?]+[.!?]*\s*/g)?.map((s) => s.trim()).filter(Boolean) ?? [];
+  return text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
 }
 
+// Chrome returns no voices until `voiceschanged` fires, so the first question has to wait for them.
+function voicesReady(timeoutMs = 1000) {
+  return new Promise<SpeechSynthesisVoice[]>((resolve) => {
+    if (speechSynthesis.getVoices().length > 0) return resolve(speechSynthesis.getVoices());
+    const done = () => {
+      window.clearTimeout(timer);
+      speechSynthesis.removeEventListener("voiceschanged", done);
+      resolve(speechSynthesis.getVoices());
+    };
+    const timer = window.setTimeout(done, timeoutMs);
+    speechSynthesis.addEventListener("voiceschanged", done);
+  });
+}
+
+type SpeakOptions = { voiceURI?: string; rate?: number; onSentence?: (sentence: string) => void };
+
 // Chrome silently stops long utterances, so text is spoken a sentence at a time.
-export function speak(text: string, options: { voiceURI?: string; rate?: number } = {}) {
+export function speak(text: string, options: SpeakOptions = {}) {
   let cancelled = false;
   const finished = new Promise<void>((resolve) => {
     if (typeof speechSynthesis === "undefined" || !text.trim()) return resolve();
     speechSynthesis.cancel();
-    const voices = englishVoices();
-    if (voices.length === 0) return resolve();
-    const voice = voices.find((v) => v.voiceURI === options.voiceURI);
     const sentences = splitSentences(text);
 
-    const next = (index: number) => {
+    const start = (voices: SpeechSynthesisVoice[]) => {
+      if (cancelled || voices.length === 0) return resolve();
+      next(0, voices.find((v) => v.voiceURI === options.voiceURI));
+    };
+
+    const next = (index: number, voice?: SpeechSynthesisVoice) => {
       if (cancelled || index >= sentences.length) return resolve();
+      options.onSentence?.(sentences[index]);
       const utterance = new SpeechSynthesisUtterance(sentences[index]);
       if (voice) utterance.voice = voice;
       utterance.rate = options.rate ?? 1;
       // Some engines never fire `end`; this keeps the interview from hanging on a silent question.
-      const guard = window.setTimeout(() => next(index + 1), 3000 + sentences[index].length * 110);
+      const guard = window.setTimeout(() => next(index + 1, voice), 3000 + sentences[index].length * 110);
       const advance = () => {
         window.clearTimeout(guard);
-        next(index + 1);
+        next(index + 1, voice);
       };
       utterance.onend = advance;
       utterance.onerror = advance;
       speechSynthesis.speak(utterance);
     };
-    next(0);
+
+    void voicesReady().then(start);
   });
 
   return {

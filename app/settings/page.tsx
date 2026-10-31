@@ -80,6 +80,7 @@ export default function SettingsPage() {
         <section className="section" aria-labelledby="room-head">
           <h2 id="room-head">In the room</h2>
           <Toggle id="speak" label="Read questions aloud" help="Turn off to read them on screen." checked={settings.speakQuestions} onChange={(speakQuestions) => update({ speakQuestions })} />
+          <Toggle id="subtitles" label="Show subtitles" help="Shows what the interviewer is saying as it speaks." checked={settings.showSubtitles} onChange={(showSubtitles) => update({ showSubtitles })} />
           <Toggle id="clips" label="Keep recordings of my answers" help="Saved in this browser for replay in your report. Never uploaded." checked={settings.recordVideo} onChange={(recordVideo) => update({ recordVideo })} />
           <Toggle id="presence" label="Estimate how often I face the camera" help="Runs on this device and downloads a small model once. An estimate from head position, never part of your score." checked={settings.cameraPresence} onChange={(cameraPresence) => update({ cameraPresence })} />
         </section>

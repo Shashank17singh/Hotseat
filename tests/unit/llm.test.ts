@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { completeJson, parseJson, transcribe } from "@/lib/server/llm";
+import { completeJson, parseJson, spokenText, transcribe } from "@/lib/server/llm";
 
 const schema = z.object({ answer: z.string() });
 const call = (apiKey?: string) =>
@@ -42,6 +42,16 @@ describe("parseJson", () => {
 });
 
 describe("completeJson", () => {
+  it("passes temperature through only when one is set", async () => {
+    vi.stubEnv("GROQ_API_KEY", "k");
+    fetchMock.mockImplementation(async () => completion('{"answer":"ok"}'));
+    await completeJson({ task: "plan", tier: "deep", system: "s", user: "u", schema, maxTokens: 10, temperature: 0.9 });
+    await call();
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init?.body)));
+    expect(bodies[0].temperature).toBe(0.9);
+    expect(bodies[1].temperature).toBeUndefined();
+  });
+
   it("reports a missing key clearly", async () => {
     await expect(call()).rejects.toMatchObject({ code: "no_key", status: 503 });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -96,11 +106,39 @@ describe("completeJson", () => {
   it("never touches the network in mock mode", async () => {
     vi.stubEnv("LLM_PROVIDER", "mock");
     const result = await completeJson({
-      task: "turn", tier: "fast", system: "s", user: "part 1", maxTokens: 10,
+      task: "turn", tier: "fast", system: "s", user: "Main question: part 1", maxTokens: 10,
       schema: z.object({ action: z.string() }),
     });
     expect(result.action).toBe("follow_up");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("spokenText", () => {
+  it("drops segments Whisper marks as probably not speech", () => {
+    const segments = [
+      { text: " I built the cache.", no_speech_prob: 0.02 },
+      { text: " Thanks for watching!", no_speech_prob: 0.93 },
+    ];
+    expect(spokenText({ text: "I built the cache. Thanks for watching!", segments })).toBe("I built the cache.");
+  });
+
+  it("returns nothing for pure silence", () => {
+    expect(spokenText({ text: "Thank you.", segments: [{ text: " Thank you.", no_speech_prob: 0.97 }] })).toBe("");
+  });
+
+  it("treats Whisper repeating its own prompt as silence", () => {
+    const text = "Umm, let me think, uh, I mean, you know.";
+    expect(spokenText({ text, segments: [{ text, no_speech_prob: 0.1 }] })).toBe("");
+  });
+
+  it("keeps real answers that contain fillers", () => {
+    const text = "Um, I mean, I rebuilt the importer, you know.";
+    expect(spokenText({ text, segments: [{ text, no_speech_prob: 0.05 }] })).toBe(text);
+  });
+
+  it("copes with a reply that has no segments", () => {
+    expect(spokenText({ text: " hello " })).toBe("hello");
   });
 });
 
@@ -121,6 +159,7 @@ describe("transcribe", () => {
     expect(String(sent?.[0])).toContain("/openai/v1/audio/transcriptions");
     const body = sent?.[1]?.body as FormData;
     expect(body.get("model")).toBe("whisper-large-v3-turbo");
+    expect(body.get("response_format")).toBe("verbose_json");
     expect(String(body.get("prompt"))).toContain("Umm");
   });
 });

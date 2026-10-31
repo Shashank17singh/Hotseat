@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { DIFFICULTIES, INTERVIEW_TYPES, PERSONAS, QUESTION_COUNTS, ROLE_GROUPS, SENIORITIES, difficultyOf, labelOf } from "@/lib/catalog";
 import type { Difficulty, InterviewType, Persona, Seniority } from "@/lib/catalog";
 import { createPlan, uploadResume } from "@/lib/api-client";
-import { readSetupDraft, saveSession, writeSetupDraft } from "@/lib/storage";
+import { pastQuestions, readSetupDraft, saveSession, writeSetupDraft } from "@/lib/storage";
 import { LIMITS } from "@/lib/types";
 import type { InterviewConfig, ResumeProfile, Session } from "@/lib/types";
 import { Notice } from "@/components/Notice";
@@ -110,7 +110,7 @@ export function SetupForm() {
       jobDescription: form.jobDescription.trim() || undefined,
     };
     try {
-      const plan = await createPlan(config, profile);
+      const plan = await createPlan(config, profile, await pastQuestions(config.role));
       const now = Date.now();
       const session: Session = {
         id: crypto.randomUUID(),

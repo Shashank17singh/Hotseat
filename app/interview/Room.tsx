@@ -8,11 +8,11 @@ import { usePresence } from "@/hooks/usePresence";
 import { errorMessage } from "@/components/Notice";
 import { nextTurn, transcribeAudio } from "@/lib/api-client";
 import { difficultyOf } from "@/lib/catalog";
-import { buildMetrics } from "@/lib/metrics";
+import { buildMetrics, heardSpeech } from "@/lib/metrics";
 import { buildTurnRequest, currentQuestion, currentTurn, initialState, reduce } from "@/lib/session";
 import type { Phase } from "@/lib/session";
-import { speak, startCaptions } from "@/lib/speech";
-import { readSettings, saveClip, saveSession } from "@/lib/storage";
+import { speak, splitSentences, startCaptions } from "@/lib/speech";
+import { readSettings, saveClip, saveSession, writeSettings } from "@/lib/storage";
 import { LIMITS } from "@/lib/types";
 import type { Session } from "@/lib/types";
 
@@ -24,6 +24,8 @@ const STATE_LABEL: Record<Phase, string> = {
   thinking: "Interviewer thinking",
   finished: "Interview finished",
 };
+
+const NOTHING_HEARD = "We didn't hear anything, so nothing was sent. Check your mic and try again, or type your answer.";
 
 function clock(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -48,6 +50,8 @@ export function Room({ session }: { session: Session }) {
   const [seconds, setSeconds] = useState(0);
   const [notice, setNotice] = useState("");
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [showSubtitles, setShowSubtitles] = useState(settings.showSubtitles);
+  const [subtitle, setSubtitle] = useState({ spoken: "", sentence: "" });
 
   const { phase, error, spoken } = state;
   const question = currentQuestion(state);
@@ -83,7 +87,13 @@ export function Room({ session }: { session: Session }) {
       return;
     }
     let live = true;
-    const speech = speak(spoken, { voiceURI: settings.voiceURI, rate: settings.speechRate });
+    const speech = speak(spoken, {
+      voiceURI: settings.voiceURI,
+      rate: settings.speechRate,
+      onSentence: (sentence) => {
+        if (live) setSubtitle({ spoken, sentence });
+      },
+    });
     speech.finished.then(() => {
       if (live) dispatch({ type: "spoken" });
     });
@@ -142,20 +152,32 @@ export function Room({ session }: { session: Session }) {
     const result = await recorder.stop();
     if (!result) return;
 
+    // Silence stops here, so it can never reach the transcriber or the interviewer.
+    if (!live && heardSpeech(result.levels) === false) {
+      setNotice(NOTHING_HEARD);
+      return;
+    }
+
+    setTranscribing(true);
+    let text = live;
+    let failed = false;
+    try {
+      text = (await transcribeAudio(result.audio)).text || live;
+    } catch (problem) {
+      failed = true;
+      setNotice(live ? "Transcription failed, so this is the live caption text. Check it before sending." : errorMessage(problem));
+    }
+    setTranscribing(false);
+    if (!failed && !text.trim()) {
+      setNotice(NOTHING_HEARD);
+      return;
+    }
+
     const current = stateRef.current;
     const turnId = currentTurn(current)?.id;
     if (settings.recordVideo && result.clip && turnId) {
       void saveClip(current.session.id, turnId, result.clip).catch(() => undefined);
     }
-
-    setTranscribing(true);
-    let text = live;
-    try {
-      text = (await transcribeAudio(result.audio)).text || live;
-    } catch (problem) {
-      setNotice(live ? "Transcription failed, so this is the live caption text. Check it before sending." : errorMessage(problem));
-    }
-    setTranscribing(false);
 
     dispatch({
       type: "answer_stopped",
@@ -168,6 +190,7 @@ export function Room({ session }: { session: Session }) {
   }, [presence, recorder, settings.recordVideo]);
 
   const sendTyped = useCallback(() => {
+    setNotice("");
     dispatch({ type: "answer_stopped", text: state.draft, metrics: buildMetrics({ text: state.draft, seconds, mode: "typed" }) });
     dispatch({ type: "submit" });
     setTyping(false);
@@ -188,6 +211,11 @@ export function Room({ session }: { session: Session }) {
 
   const heading = phase === "ready" ? "Find a quiet spot. The interviewer will speak first." : phase === "thinking" ? turn?.prompt : turn?.prompt ?? spoken;
   const mediaProblem = mediaMessage(media.status);
+  // Stays up after the voice ends, so a device with no speech engine still shows what was said.
+  const subtitleText =
+    phase === "asking"
+      ? subtitle.spoken === spoken ? subtitle.sentence : splitSentences(spoken)[0]
+      : phase === "answering" && !recording && !transcribing ? spoken : "";
   const pastTarget = phase === "answering" && seconds > targetSec;
 
   return (
@@ -221,6 +249,13 @@ export function Room({ session }: { session: Session }) {
           </p>
           <p className="room__question" data-testid="question" aria-live="polite">{heading}</p>
 
+          {showSubtitles && subtitleText && (
+            <div className="subtitle" data-testid="subtitle">
+              <span className="subtitle__who">Interviewer</span>
+              <p>{subtitleText}</p>
+            </div>
+          )}
+
           {phase === "answering" && canRecord && !typing && !recording && !transcribing && (
             <p className="field__help">Take a moment to think. Press Space or Start answer when you are ready.</p>
           )}
@@ -234,7 +269,7 @@ export function Room({ session }: { session: Session }) {
               {phase === "thinking" && (
                 <span className="btn-row">
                   <button type="button" className="btn" onClick={() => dispatch({ type: "retry" })}>Try again</button>
-                  <button type="button" className="btn" onClick={() => dispatch({ type: "reply", reply: { acknowledgement: "", action: "next", followUp: "" } })}>Next question</button>
+                  <button type="button" className="btn" onClick={() => dispatch({ type: "reply", reply: { acknowledgement: "", action: "next", followUp: "", nextQuestion: "", nextHint: "", nextSignals: [] } })}>Next question</button>
                 </span>
               )}
             </div>
@@ -279,6 +314,17 @@ export function Room({ session }: { session: Session }) {
           <button type="button" className={`btn${media.cameraOn ? " btn--on" : ""}`} aria-pressed={media.cameraOn} disabled={media.status !== "ready" || !stream?.getVideoTracks().length || recording} onClick={media.toggleCamera}>
             {media.cameraOn ? "Camera on" : "Camera off"}
           </button>
+          <button
+            type="button"
+            className={`btn${showSubtitles ? " btn--on" : ""}`}
+            aria-pressed={showSubtitles}
+            onClick={() => {
+              setShowSubtitles(!showSubtitles);
+              writeSettings({ ...readSettings(), showSubtitles: !showSubtitles });
+            }}
+          >
+            {showSubtitles ? "Subtitles on" : "Subtitles off"}
+          </button>
           {phase === "answering" && (
             <span className="timer" data-past={pastTarget}>{clock(seconds)} of {clock(targetSec)}{pastTarget ? ", wrap up" : ""}</span>
           )}
@@ -292,7 +338,7 @@ export function Room({ session }: { session: Session }) {
           {phase === "answering" && !recording && !transcribing && (
             <>
               {!state.hintShown && <button type="button" className="btn" onClick={() => dispatch({ type: "show_hint" })}>Show hint (costs 5 points)</button>}
-              <button type="button" className="btn" onClick={() => dispatch({ type: "skip" })}>Skip</button>
+              <button type="button" className="btn" onClick={() => { setNotice(""); dispatch({ type: "skip" }); }}>Skip</button>
               {typing ? (
                 <button type="button" className="btn btn--primary btn--large" onClick={sendTyped}>Send answer</button>
               ) : (
@@ -311,7 +357,7 @@ export function Room({ session }: { session: Session }) {
           {phase === "reviewing" && (
             <>
               <button type="button" className="btn" onClick={() => { dispatch({ type: "start_answer" }); startRecording(); }} disabled={!canRecord}>Record again</button>
-              <button type="button" className="btn btn--primary btn--large" onClick={() => dispatch({ type: "submit" })}>Send answer</button>
+              <button type="button" className="btn btn--primary btn--large" onClick={() => { setNotice(""); dispatch({ type: "submit" }); }}>Send answer</button>
             </>
           )}
         </div>

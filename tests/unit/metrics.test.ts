@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMetrics, countFillers, paceNote, summarizeDelivery, summarizeLevels } from "@/lib/metrics";
+import { buildMetrics, countFillers, heardSpeech, paceNote, summarizeDelivery, summarizeLevels } from "@/lib/metrics";
 
 describe("countFillers", () => {
   it("counts whole words and phrases only", () => {
@@ -21,6 +21,25 @@ describe("summarizeLevels", () => {
 
   it("handles no samples", () => {
     expect(summarizeLevels([], 100)).toEqual({ longestPauseSec: 0, silenceRatio: 0 });
+  });
+});
+
+describe("heardSpeech", () => {
+  it("rejects room noise", () => {
+    expect(heardSpeech(Array(50).fill(0.01))).toBe(false);
+  });
+
+  it("rejects a single cough or click", () => {
+    expect(heardSpeech([...Array(50).fill(0.01), 0.5, 0.5])).toBe(false);
+  });
+
+  it("accepts half a second or more of speech", () => {
+    expect(heardSpeech([...Array(50).fill(0.01), ...Array(6).fill(0.2)])).toBe(true);
+  });
+
+  it("does not judge when the meter never ran", () => {
+    expect(heardSpeech([])).toBeNull();
+    expect(heardSpeech(Array(50).fill(0))).toBeNull();
   });
 });
 

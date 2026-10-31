@@ -10,7 +10,7 @@ export const POST = aiRoute(async (request, { apiKey }) => {
     tier: "fast",
     ...turnPrompt(body),
     schema: TurnReplySchema,
-    maxTokens: 500,
+    maxTokens: 900,
     apiKey,
   });
 });

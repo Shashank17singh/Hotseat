@@ -38,8 +38,8 @@ export function uploadResume(input: File | string) {
   return request<{ profile: ResumeProfile; truncated: boolean }>("/api/resume", form, false);
 }
 
-export const createPlan = (config: InterviewConfig, profile?: ResumeProfile) =>
-  request<InterviewPlan>("/api/plan", JSON.stringify({ config, profile }));
+export const createPlan = (config: InterviewConfig, profile: ResumeProfile | undefined, avoid: string[]) =>
+  request<InterviewPlan>("/api/plan", JSON.stringify({ config, profile, avoid }));
 
 export const nextTurn = (body: TurnRequest) => request<TurnReply>("/api/turn", JSON.stringify(body));
 

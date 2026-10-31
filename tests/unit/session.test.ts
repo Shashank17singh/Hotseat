@@ -3,8 +3,9 @@ import { buildTurnRequest, canFollowUp, initialState, reduce } from "@/lib/sessi
 import type { RoomState } from "@/lib/session";
 import { config, session } from "./fixtures";
 
-const next = { acknowledgement: "Thanks.", action: "next", followUp: "" } as const;
-const follow = { acknowledgement: "Thanks.", action: "follow_up", followUp: "Why that approach?" } as const;
+const reply = { nextQuestion: "", nextHint: "", nextSignals: [] };
+const next = { ...reply, acknowledgement: "Thanks.", action: "next", followUp: "" } as const;
+const follow = { ...reply, acknowledgement: "Thanks.", action: "follow_up", followUp: "Why that approach?" } as const;
 
 function answer(state: RoomState, text = "My answer") {
   const stopped = reduce(state, { type: "answer_stopped", text });
@@ -96,11 +97,56 @@ describe("follow-ups", () => {
   });
 });
 
+describe("questions that build on the conversation", () => {
+  const adapted = { ...next, nextQuestion: "You mentioned caching. How did you invalidate it?", nextHint: "Think about staleness.", nextSignals: ["Names a strategy"] };
+
+  it("asks the rewritten question and stores it for the report", () => {
+    const state = reduce(answer(begun()), { type: "reply", reply: adapted });
+    expect(state.spoken).toBe("Thanks. You mentioned caching. How did you invalidate it?");
+    expect(state.session.turns.at(-1)?.prompt).toBe(adapted.nextQuestion);
+    expect(state.session.plan.questions[1]).toMatchObject({ id: "q2", question: adapted.nextQuestion, hint: "Think about staleness.", signals: ["Names a strategy"] });
+  });
+
+  it("keeps the planned question when no rewrite comes back", () => {
+    const state = reduce(answer(begun()), { type: "reply", reply: next });
+    expect(state.session.plan.questions[1].question).toBe("Question number 2?");
+  });
+
+  it("never rewrites a coding exercise", () => {
+    const plan = session().plan;
+    const coding = session({ plan: { ...plan, questions: plan.questions.map((q, i) => (i === 1 ? { ...q, answerFormat: "code" as const } : q)) } });
+    const state = reduce(answer(reduce(initialState(coding), { type: "begin" })), { type: "reply", reply: adapted });
+    expect(state.session.plan.questions[1].question).toBe("Question number 2?");
+    expect(buildTurnRequest(answer(reduce(initialState(coding), { type: "begin" }))).adaptNext).toBe(false);
+  });
+
+  it("sends earlier answers, but not the current question's, as context", () => {
+    const moved = reduce(answer(begun(), "I built a cache"), { type: "reply", reply: next });
+    const request = buildTurnRequest(answer(moved, "Second answer"));
+    expect(request.earlier).toEqual([{ question: "Question number 1?", answer: "I built a cache" }]);
+    expect(request.adaptNext).toBe(true);
+  });
+
+  it("does not ask for a next question at the end", () => {
+    let state = begun();
+    for (let i = 0; i < 2; i += 1) state = reduce(answer(state), { type: "reply", reply: next });
+    expect(buildTurnRequest(answer(state)).nextQuestion).toBeUndefined();
+  });
+});
+
 describe("skips, hints and ending early", () => {
-  it("records a skip", () => {
+  it("moves straight on after a skip, with nothing for the model to react to", () => {
     const state = reduce(reduce(begun(), { type: "spoken" }), { type: "skip" });
     expect(state.session.turns[0].skipped).toBe(true);
-    expect(state.phase).toBe("thinking");
+    expect(state.phase).toBe("asking");
+    expect(state.questionIndex).toBe(1);
+    expect(state.spoken).toBe("That's fine, let's move on. Question number 2?");
+  });
+
+  it("finishes when the last question is skipped", () => {
+    let state = begun();
+    for (let i = 0; i < 3; i += 1) state = reduce(state, { type: "skip" });
+    expect(state.phase).toBe("finished");
   });
 
   it("marks hint use on the turn", () => {

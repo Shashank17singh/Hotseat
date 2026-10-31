@@ -14,11 +14,13 @@ A spoken AI mock interview. Upload a resume, pick a role and difficulty, and ans
 
 ### The interview
 
-- The interviewer reads questions aloud
+- The interviewer reads questions aloud, with subtitles you can turn off
+- Each question builds on your earlier answers, and new interviews avoid repeating past ones
 - Answers are recorded and transcribed, with an editable transcript before sending
 - Live captions in Chrome and Edge
 - Self-view camera, plus mic and camera toggles
 - Adaptive follow-ups, capped by difficulty
+- Silent recordings are caught, so the interviewer only reacts to what you actually said
 - A code editor for coding questions
 - Typing as an alternative to speaking, hints, skip, and ending early
 - Reloading the page resumes the interview

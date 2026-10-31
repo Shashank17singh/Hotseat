@@ -14,6 +14,7 @@ export type Settings = {
   voiceURI: string;
   speechRate: number;
   speakQuestions: boolean;
+  showSubtitles: boolean;
   recordVideo: boolean;
   cameraPresence: boolean;
 };
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceURI: "",
   speechRate: 1,
   speakQuestions: true,
+  showSubtitles: true,
   recordVideo: true,
   cameraPresence: false,
 };
@@ -56,6 +58,21 @@ export function writeSetupDraft(value: unknown) {
     sessionStorage.setItem(SETUP_KEY, JSON.stringify(value));
   } catch {
     // Losing a form draft is harmless.
+  }
+}
+
+const AVOID_LIMIT = 30;
+
+// Questions this browser has already been asked for a role, so a new interview can steer away from them.
+export async function pastQuestions(role: string) {
+  try {
+    const past = await listSessions();
+    return past
+      .filter((session) => session.config.role.toLowerCase() === role.toLowerCase())
+      .flatMap((session) => session.plan.questions.map((q) => q.question))
+      .slice(0, AVOID_LIMIT);
+  } catch {
+    return [];
   }
 }
 

@@ -31,16 +31,17 @@ Return JSON with these keys:
   };
 }
 
-export function planPrompt(config: InterviewConfig, profile?: ResumeProfile) {
+export function planPrompt(config: InterviewConfig, profile?: ResumeProfile, avoid: string[] = []) {
   const material = [
     profile ? data("resume_profile", JSON.stringify(profile)) : "No resume was provided, so ask questions any candidate for this role could answer.",
     config.jobDescription ? data("job_description", config.jobDescription) : "",
+    avoid.length ? `This candidate has already been asked the questions below. Do not repeat or lightly reword any of them. Cover different ground.\n${avoid.map((q) => `- ${q}`).join("\n")}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
 
   return {
-    system: `You are an experienced hiring manager planning a real interview. Questions must be what a strong interviewer at a good company would actually ask, sized for the stated seniority and difficulty. Each question is one spoken sentence or two, with no bullet points or markdown, because it will be read aloud. When a resume is given, tie at least half the questions to specific projects or roles in it, naming them. Never ask about age, family, religion, health, nationality, or anything else that is illegal or improper in a hiring process. ${DATA_RULE}`,
+    system: `You are an experienced hiring manager planning a real interview. Questions must be what a strong interviewer at a good company would actually ask, sized for the stated seniority and difficulty. Each question is one spoken sentence or two, with no bullet points or markdown, because it will be read aloud. When a resume is given, tie at least half the questions to specific projects or roles in it, naming them. Prefer a concrete scenario to a stock question such as "tell me about yourself" or "what is your greatest weakness". Never ask about age, family, religion, health, nationality, or anything else that is illegal or improper in a hiring process. ${DATA_RULE}`,
     user: `${describe(config)}
 
 ${material}
@@ -65,18 +66,31 @@ export function turnPrompt(request: TurnRequest) {
     ? `Ask one follow-up only if the answer was vague, skipped a claim worth testing, or missed one of these points: ${request.signals.join("; ") || "depth and specifics"}. Otherwise move on.`
     : `Do not ask a follow-up. Set action to "next".`;
 
+  const earlier = request.earlier.length
+    ? `Earlier in this interview:\n${request.earlier
+        .map((turn) => `Interviewer: ${turn.question}\n${data("candidate_answer", turn.answer)}`)
+        .join("\n")}\n\n`
+    : "";
+
+  const closing = "This is the last question. If you move on, thank the candidate and close the interview in your acknowledgement.";
+  const nextStep = !request.nextQuestion
+    ? closing
+    : request.adaptNext
+      ? `If you move on, write the next main question in nextQuestion. It must be a new question that covers the same skill as this draft: "${request.nextQuestion}". Build on something specific the candidate said in this interview where you can, and do not repeat anything already asked. Also give nextHint, a nudge on how to approach it, and nextSignals, what a strong answer covers.`
+      : "The next question will be read after your reply, so do not ask it yourself.";
+
   return {
-    system: `You are the interviewer in a live spoken interview. Stay in character and stay brief. Never tell the candidate whether the answer was right, never coach, and never give a score. Speak in plain sentences with no markdown. ${DATA_RULE}`,
+    system: `You are the interviewer in a live spoken interview. Stay in character and stay brief. Never tell the candidate whether the answer was right, never coach, and never give a score. Refer only to what the candidate actually said, and never invent or assume anything they did not say. Speak in plain sentences with no markdown. ${DATA_RULE}`,
     user: `${describe(config)}
 
-Main question: ${request.question}
+${earlier}Main question: ${request.question}
 
 ${transcript}
 
 ${allowed}
-${request.nextQuestion ? "The next question will be read after your reply, so do not ask it yourself." : "This is the last question. If you move on, thank the candidate and close the interview in your acknowledgement."}
+${nextStep}
 
-Return JSON: {"acknowledgement":"one short neutral sentence, or empty","action":"follow_up or next","followUp":"the single follow-up question, or empty"}`,
+Return JSON: {"acknowledgement":"one short neutral sentence, or empty","action":"follow_up or next","followUp":"the single follow-up question, or empty","nextQuestion":"","nextHint":"","nextSignals":[""]}`,
   };
 }
 

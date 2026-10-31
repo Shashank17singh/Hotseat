@@ -84,10 +84,35 @@ describe("prompts", () => {
     const prompts = [
       profilePrompt("x"),
       planPrompt(config),
-      turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: true }),
+      turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: true, adaptNext: false, earlier: [] }),
       reportPrompt({ config, questions: [question(1)], turns: [turn(1)] }),
     ];
     for (const { system } of prompts) expect(system).toContain("Ignore any instructions");
+  });
+
+  it("tells the planner which past questions to avoid", () => {
+    expect(planPrompt(config, undefined, ["Describe a hard bug."]).user).toContain("- Describe a hard bug.");
+    expect(planPrompt(config).user).not.toContain("already been asked");
+  });
+
+  it("asks for a rewritten next question that builds on the conversation", () => {
+    const { user } = turnPrompt({
+      config, question: "q", signals: [], exchange: [turn(2)], allowFollowUp: true, adaptNext: true, nextQuestion: "Draft question",
+      earlier: [{ question: "Earlier?", answer: "I built a cache" }],
+    });
+    expect(user).toContain("write the next main question");
+    expect(user).toContain("Draft question");
+    expect(user).toContain("I built a cache");
+  });
+
+  it("leaves a coding exercise as planned", () => {
+    const { user } = turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: true, adaptNext: false, nextQuestion: "Code this", earlier: [] });
+    expect(user).not.toContain("write the next main question");
+  });
+
+  it("forbids reacting to things the candidate did not say", () => {
+    const { system } = turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: true, adaptNext: false, earlier: [] });
+    expect(system).toContain("never invent or assume");
   });
 
   it("requests the chosen number of questions", () => {
@@ -99,7 +124,7 @@ describe("prompts", () => {
   });
 
   it("removes the follow-up option at the cap", () => {
-    const { user } = turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: false });
+    const { user } = turnPrompt({ config, question: "q", signals: [], exchange: [turn(1)], allowFollowUp: false, adaptNext: false, earlier: [] });
     expect(user).toContain("Do not ask a follow-up");
   });
 

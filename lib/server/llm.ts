@@ -71,7 +71,7 @@ function toApiError(error: unknown): ApiError {
   return new ApiError("upstream", "The AI service did not respond. Try again.");
 }
 
-async function callModel(provider: Provider, tier: Tier, system: string, user: string, maxTokens: number) {
+async function callModel(provider: Provider, tier: Tier, system: string, user: string, maxTokens: number, temperature?: number) {
   const response = await provider.client.chat.completions.create({
     model: provider.models[tier],
     messages: [
@@ -80,6 +80,7 @@ async function callModel(provider: Provider, tier: Tier, system: string, user: s
     ],
     response_format: { type: "json_object" },
     max_completion_tokens: maxTokens,
+    ...(temperature === undefined ? {} : { temperature }),
   });
   return response.choices[0]?.message?.content ?? "";
 }
@@ -91,9 +92,10 @@ export async function completeJson<S extends z.ZodType>(options: {
   user: string;
   schema: S;
   maxTokens: number;
+  temperature?: number;
   apiKey?: string;
 }): Promise<z.output<S>> {
-  const { task, tier, system, user, schema, maxTokens, apiKey } = options;
+  const { task, tier, system, user, schema, maxTokens, temperature, apiKey } = options;
 
   if (isMock()) {
     return schema.parse(mockCompletion(task, user));
@@ -109,7 +111,7 @@ export async function completeJson<S extends z.ZodType>(options: {
     try {
       let prompt = user;
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const raw = await callModel(provider, tier, system, prompt, maxTokens);
+        const raw = await callModel(provider, tier, system, prompt, maxTokens, temperature);
         try {
           return schema.parse(parseJson(raw));
         } catch (problem) {
@@ -127,6 +129,17 @@ export async function completeJson<S extends z.ZodType>(options: {
 
 // Asking Whisper to keep disfluencies matters: without this prompt it tidies away the fillers we measure.
 const VERBATIM_PROMPT = "Umm, let me think, uh, I mean, you know, so, hmm, kind of, sort of.";
+const NO_SPEECH_LIMIT = 0.6;
+
+const lettersOnly = (text: string) => text.toLowerCase().replace(/[^a-z]/g, "");
+
+// On silence Whisper tends to invent text, often by repeating its own prompt back.
+export function spokenText(result: { text: string; segments?: { text: string; no_speech_prob: number }[] }) {
+  const text = result.segments
+    ? result.segments.filter((s) => s.no_speech_prob < NO_SPEECH_LIMIT).map((s) => s.text).join("").trim()
+    : result.text.trim();
+  return lettersOnly(VERBATIM_PROMPT).includes(lettersOnly(text)) ? "" : text;
+}
 
 export async function transcribe(audio: File, apiKey?: string) {
   if (isMock()) return mockTranscript();
@@ -142,8 +155,9 @@ export async function transcribe(audio: File, apiKey?: string) {
       model: process.env.GROQ_MODEL_STT || "whisper-large-v3-turbo",
       prompt: VERBATIM_PROMPT,
       language: "en",
+      response_format: "verbose_json",
     });
-    return result.text.trim();
+    return spokenText(result);
   } catch (error) {
     throw toApiError(error);
   }
