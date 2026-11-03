@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import { expect, test } from "./silent";
+import type { Page } from "./silent";
 
 // Chrome's built-in fake mic only beeps briefly, too little to count as speech, so tests supply a steady tone.
 async function fakeMic(page: Page, gain: number) {
@@ -302,12 +302,12 @@ test("a visitor's key is sent as a header and data can be wiped", async ({ page 
   await page.goto("/settings");
   await page.getByRole("button", { name: "Delete all my data" }).click();
   await page.getByRole("button", { name: "Delete everything" }).click();
-  await expect(page.getByText("All interviews and recordings were deleted.")).toBeVisible();
+  await expect(page.getByText("All interviews, recordings and courses were deleted.")).toBeVisible();
   await page.goto("/history");
   await expect(page.getByText("No interviews yet")).toBeVisible();
 });
 
-for (const path of ["/", "/setup", "/history", "/settings"]) {
+for (const path of ["/", "/setup", "/learn", "/history", "/settings"]) {
   test(`${path} has no horizontal scroll on a phone`, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 740 });
     await page.goto(path);

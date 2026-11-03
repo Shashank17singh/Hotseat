@@ -12,7 +12,7 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     permissions: ["camera", "microphone"],
     launchOptions: {
-      args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--autoplay-policy=no-user-gesture-required"],
+      args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--autoplay-policy=no-user-gesture-required", "--mute-audio"],
     },
     trace: "retain-on-failure",
   },

@@ -1,7 +1,10 @@
 "use client";
 
 import { readSettings } from "./storage";
-import type { ApiErrorBody, InterviewConfig, InterviewPlan, Report, ReportRequest, ResumeProfile, TurnReply, TurnRequest } from "./types";
+import type {
+  ApiErrorBody, CheckRequest, CheckResult, CourseOutline, CourseRequest, InterviewConfig, InterviewPlan, Lesson, LessonRequest, Report, ReportRequest,
+  ResumeProfile, TurnReply, TurnRequest,
+} from "./types";
 
 export class RequestError extends Error {
   constructor(
@@ -38,8 +41,14 @@ export function uploadResume(input: File | string) {
   return request<{ profile: ResumeProfile; truncated: boolean }>("/api/resume", form, false);
 }
 
-export const createPlan = (config: InterviewConfig, profile: ResumeProfile | undefined, avoid: string[]) =>
-  request<InterviewPlan>("/api/plan", JSON.stringify({ config, profile, avoid }));
+export const createPlan = (config: InterviewConfig, profile: ResumeProfile | undefined, avoid: string[], focus: { id: string; name: string }[] = []) =>
+  request<InterviewPlan>("/api/plan", JSON.stringify({ config, profile, avoid, focus }));
+
+export const createOutline = (body: CourseRequest) => request<CourseOutline>("/api/learn/course", JSON.stringify(body));
+
+export const createLesson = (body: LessonRequest) => request<Lesson>("/api/learn/lesson", JSON.stringify(body));
+
+export const checkExplanation = (body: CheckRequest) => request<CheckResult>("/api/learn/check", JSON.stringify(body));
 
 export const nextTurn = (body: TurnRequest) => request<TurnReply>("/api/turn", JSON.stringify(body));
 

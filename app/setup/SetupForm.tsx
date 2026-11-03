@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DIFFICULTIES, INTERVIEW_TYPES, PERSONAS, QUESTION_COUNTS, ROLE_GROUPS, SENIORITIES, difficultyOf, labelOf } from "@/lib/catalog";
 import type { Difficulty, InterviewType, Persona, Seniority } from "@/lib/catalog";
-import { createPlan, uploadResume } from "@/lib/api-client";
-import { pastQuestions, readSetupDraft, saveSession, writeSetupDraft } from "@/lib/storage";
+import { createPlan } from "@/lib/api-client";
+import { focusSkills } from "@/lib/learn";
+import { loadCourse, pastQuestions, readSetupDraft, saveSession, writeSetupDraft } from "@/lib/storage";
 import { LIMITS } from "@/lib/types";
 import type { InterviewConfig, ResumeProfile, Session } from "@/lib/types";
 import { Notice } from "@/components/Notice";
+import { ResumeInput } from "@/components/ResumeInput";
 import { DeviceCheck } from "./DeviceCheck";
 
 type Form = {
@@ -40,16 +42,10 @@ export function SetupForm() {
   const params = useSearchParams();
   const [form, setForm] = useState<Form>(DEFAULTS);
   const [profile, setProfile] = useState<ResumeProfile | undefined>();
-  const [truncated, setTruncated] = useState(false);
-  const [resumeBusy, setResumeBusy] = useState(false);
-  const [resumeError, setResumeError] = useState<unknown>();
-  const [pasteOpen, setPasteOpen] = useState(false);
-  const [pasted, setPasted] = useState("");
-  const [over, setOver] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<unknown>();
   const [roleError, setRoleError] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [focus, setFocus] = useState<{ courseId: string; skills: { id: string; name: string }[] } | undefined>();
   const restored = useRef(false);
 
   useEffect(() => {
@@ -67,6 +63,16 @@ export function SetupForm() {
     }));
     setProfile(savedProfile);
     restored.current = true;
+
+    const courseId = params.get("course");
+    if (!courseId) return;
+    loadCourse(courseId).then((course) => {
+      if (!course) return;
+      const { role: courseRole, seniority, jobDescription, profile: courseProfile } = course.request;
+      setForm((current) => ({ ...current, seniority, role: courseRole ?? current.role, jobDescription: jobDescription ?? current.jobDescription }));
+      setProfile(courseProfile);
+      setFocus({ courseId, skills: focusSkills(course, Date.now()) });
+    }, () => undefined);
   }, [params]);
 
   useEffect(() => {
@@ -74,21 +80,6 @@ export function SetupForm() {
   }, [form, profile]);
 
   const update = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }));
-
-  async function readResume(input: File | string) {
-    setResumeBusy(true);
-    setResumeError(undefined);
-    try {
-      const result = await uploadResume(input);
-      setProfile(result.profile);
-      setTruncated(result.truncated);
-      setPasteOpen(false);
-    } catch (error) {
-      setResumeError(error);
-    } finally {
-      setResumeBusy(false);
-    }
-  }
 
   async function start() {
     if (form.role.trim().length < 2) {
@@ -110,7 +101,7 @@ export function SetupForm() {
       jobDescription: form.jobDescription.trim() || undefined,
     };
     try {
-      const plan = await createPlan(config, profile, await pastQuestions(config.role));
+      const plan = await createPlan(config, profile, await pastQuestions(config.role), focus?.skills);
       const now = Date.now();
       const session: Session = {
         id: crypto.randomUUID(),
@@ -121,6 +112,7 @@ export function SetupForm() {
         plan,
         turns: [],
         status: "in_progress",
+        courseId: focus?.courseId,
       };
       await saveSession(session);
       router.push(`/interview?id=${session.id}`);
@@ -132,67 +124,17 @@ export function SetupForm() {
 
   return (
     <form onSubmit={(event) => { event.preventDefault(); void start(); }} noValidate>
+      {focus && (
+        <div className="notice notice--info" data-testid="focus">
+          <span>This interview tests your course, shakiest skills first: {focus.skills.map((skill) => skill.name).join(", ")}. Weak answers go back to the course for review.</span>
+        </div>
+      )}
+
       <section className="section" aria-labelledby="resume-head">
         <h2 id="resume-head">Your resume</h2>
         <p className="section__note">Optional. With it, the interviewer asks about your actual projects. PDF, DOCX or TXT, up to 4 MB.</p>
 
-        {profile ? (
-          <div className="profile" data-testid="profile">
-            <p className="profile__name">{profile.name || "Resume read"}</p>
-            {profile.headline && <p>{profile.headline}</p>}
-            {profile.skills.length > 0 && (
-              <ul className="tags" aria-label="Skills found">
-                {profile.skills.slice(0, 16).map((skill) => <li key={skill}>{skill}</li>)}
-              </ul>
-            )}
-            {truncated && <p className="field__help">This resume was long, so only the first {LIMITS.resumeChars.toLocaleString()} characters were read.</p>}
-            <p style={{ marginTop: "var(--space-sm)" }}>
-              <button type="button" className="textlink" onClick={() => { setProfile(undefined); setTruncated(false); }}>Remove and use another</button>
-            </p>
-          </div>
-        ) : (
-          <div
-            className="drop"
-            data-over={over}
-            onDragOver={(event) => { event.preventDefault(); setOver(true); }}
-            onDragLeave={() => setOver(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setOver(false);
-              const file = event.dataTransfer.files[0];
-              if (file) void readResume(file);
-            }}
-          >
-            <p>Drop your resume here, or choose a file.</p>
-            <input
-              ref={fileInput}
-              type="file"
-              accept=".pdf,.docx,.txt,.md"
-              className="visually-hidden"
-              aria-label="Resume file"
-              tabIndex={-1}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void readResume(file);
-                event.target.value = "";
-              }}
-            />
-            <div className="btn-row">
-              <button type="button" className="btn" aria-busy={resumeBusy} disabled={resumeBusy} onClick={() => fileInput.current?.click()}>
-                {resumeBusy ? "Reading resume" : "Choose file"}
-              </button>
-              <button type="button" className="textlink" onClick={() => setPasteOpen((open) => !open)}>Paste text instead</button>
-            </div>
-            {pasteOpen && (
-              <div className="field" style={{ width: "100%" }}>
-                <label className="field__label" htmlFor="resume-text">Resume text</label>
-                <textarea id="resume-text" className="input" value={pasted} maxLength={LIMITS.resumeChars} onChange={(event) => setPasted(event.target.value)} />
-                <div><button type="button" className="btn" disabled={resumeBusy || !pasted.trim()} onClick={() => void readResume(pasted)}>Use this text</button></div>
-              </div>
-            )}
-          </div>
-        )}
-        {resumeError !== undefined && <Notice error={resumeError} />}
+        <ResumeInput profile={profile} onChange={setProfile} />
       </section>
 
       <section className="section" aria-labelledby="role-head">

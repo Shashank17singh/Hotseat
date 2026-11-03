@@ -89,14 +89,15 @@ export default function SettingsPage() {
           <h2 id="data-head">Where your data goes</h2>
           <ul className="list">
             <li>Video stays in this browser and is never uploaded.</li>
-            <li>Answer audio goes to Groq for transcription, and resume text and answers go to Groq to run the interview.</li>
+            <li>Answer audio goes to Groq for transcription, and resume text, answers and your course explanations go to Groq to run the interview and your lessons.</li>
+            <li>To fact-check a lesson, only the skill&apos;s name, such as FastAPI, is sent to Context7 to find its documentation.</li>
             <li>In Chrome and Edge, live captions are processed by your browser&apos;s speech service.</li>
-            <li>This site has no accounts or database, so reports exist only on this device.</li>
+            <li>This site has no accounts or database, so reports and courses exist only on this device.</li>
           </ul>
           <div className="btn-row" style={{ marginTop: "var(--space-md)" }}>
             {confirmDelete ? (
               <>
-                <span>Delete every interview, report and recording?</span>
+                <span>Delete every interview, report, recording and course?</span>
                 <button type="button" className="btn btn--danger" onClick={() => void wipe()}>Delete everything</button>
                 <button type="button" className="btn" onClick={() => setConfirmDelete(false)}>Keep them</button>
               </>
@@ -104,7 +105,7 @@ export default function SettingsPage() {
               <button type="button" className="btn btn--danger" onClick={() => setConfirmDelete(true)}>Delete all my data</button>
             )}
           </div>
-          {deleted && <p className="field__help" role="status" style={{ marginTop: "var(--space-xs)" }}>All interviews and recordings were deleted.</p>}
+          {deleted && <p className="field__help" role="status" style={{ marginTop: "var(--space-xs)" }}>All interviews, recordings and courses were deleted.</p>}
         </section>
       </main>
     </>

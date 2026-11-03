@@ -171,6 +171,20 @@ textarea.input { min-height: 120px; line-height: 1.55; resize: vertical; }
 .curve__hit:focus-visible { outline: 2px solid var(--color-focus); }
 .curve__tip { position: absolute; z-index: var(--z-tooltip); max-width: 240px; padding: var(--space-2xs) var(--space-xs); background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-rule); border-radius: 8px; font-size: var(--text-xs); pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); }
 
+/* Learn */
+.path { display: grid; list-style: none; margin: 0; padding: 0; }
+.path li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2xs) var(--space-md); align-items: baseline; padding-block: var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule); }
+.path a { font-weight: 500; }
+.path__note { grid-column: 1 / -1; font-size: var(--text-sm); color: var(--color-muted); }
+.state { font-size: var(--text-sm); color: var(--color-muted); white-space: nowrap; }
+.state[data-state="review"], .state[data-state="weak"] { color: var(--color-focus); }
+.state[data-state="ready"] { color: var(--color-success); }
+.quiz { display: grid; gap: var(--space-lg); }
+.quiz .choices legend { font-size: var(--text-md); font-weight: 400; color: var(--color-ink); max-width: 65ch; }
+.lesson { display: grid; gap: var(--space-sm); max-width: 68ch; }
+.result { display: grid; gap: var(--space-sm); padding: var(--space-md); margin-top: var(--space-md); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-well); }
+.result .figure { font-size: var(--text-2xl); }
+
 .skeleton { height: 96px; background: var(--color-paper-2); border-radius: var(--radius-well); }
 .empty { display: grid; justify-items: start; gap: var(--space-sm); padding-block: var(--space-xl); }
 .empty h2 { font-size: var(--text-2xl); }

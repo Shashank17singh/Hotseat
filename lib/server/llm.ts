@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { ApiError } from "./errors";
 import { mockCompletion, mockTranscript } from "./mock";
 
-export type Task = "profile" | "plan" | "turn" | "report";
+export type Task = "profile" | "plan" | "turn" | "report" | "course" | "course_review" | "lesson" | "lesson_review" | "check";
 type Tier = "fast" | "deep";
 
 type Provider = { name: string; client: OpenAI; models: Record<Tier, string> };
@@ -124,6 +124,8 @@ export async function completeJson<S extends z.ZodType>(options: {
       if (!isRetryableElsewhere(error)) throw toApiError(error);
     }
   }
+  // Only the kind of failure is logged, because messages can quote resume text back.
+  console.warn(`AI ${task} failed:`, lastError instanceof APIError ? lastError.status : lastError instanceof Error ? lastError.name : "unknown");
   throw toApiError(lastError);
 }
 

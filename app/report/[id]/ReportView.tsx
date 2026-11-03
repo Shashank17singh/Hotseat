@@ -9,7 +9,7 @@ import { createReport } from "@/lib/api-client";
 import { DIFFICULTIES, INTERVIEW_TYPES, labelOf } from "@/lib/catalog";
 import { paceNote, summarizeDelivery } from "@/lib/metrics";
 import { heatStep } from "@/lib/score";
-import { loadClip, loadSession, saveSession, writeSetupDraft } from "@/lib/storage";
+import { feedCourse, loadClip, loadSession, saveSession, writeSetupDraft } from "@/lib/storage";
 import type { Report, Session, Turn } from "@/lib/types";
 
 type Status = "loading" | "missing" | "empty" | "generating" | "error" | "ready";
@@ -60,7 +60,8 @@ export function ReportView({ id }: { id: string }) {
     setError(undefined);
     try {
       const report = await createReport({ config: current.config, questions: current.plan.questions, turns: current.turns });
-      const finished: Session = { ...current, report, status: "complete", updatedAt: Date.now() };
+      const scored: Session = { ...current, report, status: "complete", updatedAt: Date.now() };
+      const finished: Session = { ...scored, reopened: await feedCourse(scored) };
       await saveSession(finished);
       setSession(finished);
       setStatus("ready");
@@ -245,6 +246,21 @@ function FullReport({ session, report, onPracticeAgain }: { session: Session; re
           );
         })}
       </section>
+
+      {session.courseId && (
+        <section className="section" aria-labelledby="course-head">
+          <h2 id="course-head">Back to your course</h2>
+          {session.reopened?.length ? (
+            <>
+              <p className="section__note">These answers were weak, so the skills behind them are due for review again.</p>
+              <ul className="list" data-testid="reopened">{session.reopened.map((name) => <li key={name}>{name}</li>)}</ul>
+            </>
+          ) : <p className="section__note">No skill needs reviewing after this interview.</p>}
+          <div className="btn-row" style={{ marginTop: "var(--space-md)" }}>
+            <Link className="btn" href={`/learn/${session.courseId}`}>Open your course</Link>
+          </div>
+        </section>
+      )}
 
       {report.nextSteps.length > 0 && (
         <section className="section">

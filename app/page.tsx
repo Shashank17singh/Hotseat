@@ -21,6 +21,7 @@ export default function Home() {
           <Link href="/" className="wordmark">Hotseat</Link>
           <nav className="land-nav__links" aria-label="Main">
             <a className="navlink" href="#how">How it works</a>
+            <Link className="navlink" href="/learn">Learn</Link>
             <Link className="navlink" href="/history">History</Link>
             <Link className="btn" href="/setup">Start practising</Link>
           </nav>
@@ -109,6 +110,14 @@ export default function Home() {
         </section>
 
         <section className="stage">
+          <div className="stage__head">
+            <h2>Not ready for the seat?</h2>
+            <p>Learn what your resume claims from the beginning. Hotseat builds a course from it, checks what you can explain, and tells you which lines you could not defend yet.</p>
+          </div>
+          <Link className="btn" href="/learn">Build a course</Link>
+        </section>
+
+        <section className="stage">
           <div className="stage__head"><h2>What you need</h2></div>
           <table className="needs">
             <tbody>
@@ -130,6 +139,7 @@ export default function Home() {
         <p className="mast__word">Hotseat</p>
         <nav className="mast__links" aria-label="Footer">
           <Link className="navlink" href="/setup">New interview</Link>
+          <Link className="navlink" href="/learn">Learn</Link>
           <Link className="navlink" href="/history">History</Link>
           <Link className="navlink" href="/settings">Settings and privacy</Link>
         </nav>

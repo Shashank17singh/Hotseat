@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
+  { href: "/learn", label: "Learn" },
   { href: "/history", label: "History" },
   { href: "/settings", label: "Settings" },
 ];
@@ -17,7 +18,7 @@ export function TopBar() {
         <Link href="/" className="wordmark">Hotseat</Link>
         <nav className="topbar__links" aria-label="Main">
           {LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className="navlink" aria-current={pathname === link.href ? "page" : undefined}>
+            <Link key={link.href} href={link.href} className="navlink" aria-current={pathname.startsWith(link.href) ? "page" : undefined}>
               {link.label}
             </Link>
           ))}

@@ -11,6 +11,7 @@ export const LIMITS = {
   codeChars: 8000,
   jobDescriptionChars: 8000,
   resumeChars: 20000,
+  topicChars: 2000,
   resumeBytes: 4 * 1024 * 1024,
   // Vercel rejects request bodies over 4.5 MB; at 24 kbit/s this is about 22 minutes of speech.
   audioBytes: 4 * 1024 * 1024,
@@ -68,6 +69,8 @@ export const QuestionSchema = z.object({
   hint: text(300).catch("Take a moment and structure your answer before you start."),
   signals: z.array(text(160)).max(6).catch([]),
   answerFormat: z.enum(["spoken", "code"]).catch("spoken"),
+  // Set on interviews started from a course, so a weak answer can send that skill back for review.
+  skillId: z.string().max(20).optional().catch(undefined),
 });
 export type PlannedQuestion = z.infer<typeof QuestionSchema>;
 
@@ -170,6 +173,7 @@ export const PlanRequestSchema = z.object({
   config: ConfigSchema,
   profile: ProfileSchema.optional(),
   avoid: z.array(z.string().max(600)).max(40).default([]),
+  focus: z.array(z.object({ id: z.string().max(20), name: z.string().max(80) })).max(8).default([]),
 });
 
 export const ReportRequestSchema = z.object({
@@ -189,6 +193,122 @@ export type Session = {
   turns: Turn[];
   report?: Report;
   status: "in_progress" | "awaiting_report" | "complete";
+  courseId?: string;
+  // Names of the course skills this interview sent back for review.
+  reopened?: string[];
+};
+
+const QuizSchema = z
+  .object({
+    question: text(400).min(5),
+    options: z.array(text(240).min(1)).min(2).max(4),
+    correct: z.coerce.number().int().min(0),
+    explanation: text(400).catch(""),
+  })
+  .refine((quiz) => quiz.correct < quiz.options.length);
+
+export const SkillSchema = z.object({
+  id: z.coerce.string().max(20),
+  name: text(80).min(2),
+  // The resume wording this skill defends. Empty for skills the resume does not claim.
+  claim: text(240).catch(""),
+  why: text(300).catch(""),
+  prerequisites: z.array(z.coerce.string().max(20)).max(8).catch([]),
+  quiz: QuizSchema,
+});
+export type Skill = z.infer<typeof SkillSchema>;
+
+export const OutlineSchema = z.object({
+  title: text(120).min(2),
+  // A model that fumbles one quiz should cost that skill, not the whole course.
+  skills: z
+    .array(z.unknown())
+    .transform((list) => list.flatMap((item) => {
+      const skill = SkillSchema.safeParse(item);
+      return skill.success ? [skill.data] : [];
+    }).slice(0, 12))
+    .refine((skills) => skills.length > 0),
+});
+export type CourseOutline = z.infer<typeof OutlineSchema>;
+
+export const LessonSchema = z.object({
+  summary: text(500).min(5),
+  explanation: z.array(text(1200).min(1)).min(1).max(6),
+  example: text(1200).catch(""),
+  code: text(2000).catch(""),
+  pitfalls: stringList(5, 240),
+  interviewQuestions: stringList(5, 240),
+  checkPrompt: text(300).min(5),
+  keyPoints: z.array(text(200).min(1)).min(1).max(6),
+  sources: stringList(4, 120),
+  // False when the fact-check could not run, so the page can say so. Lessons saved before it existed have no value.
+  reviewed: z.boolean().optional(),
+  // The documentation the fact-check read, when it found any.
+  checkedAgainst: z.string().max(120).optional(),
+});
+export type Lesson = z.infer<typeof LessonSchema>;
+
+export const LessonReviewSchema = z.object({
+  problems: stringList(10, 300),
+  lesson: LessonSchema,
+});
+
+export const CheckResultSchema = z.object({
+  score: z.coerce.number().min(0).max(100).catch(0),
+  feedback: text(600).catch(""),
+  covered: stringList(6, 200),
+  missed: stringList(6, 200),
+  reteach: text(1200).catch(""),
+});
+export type CheckResult = z.infer<typeof CheckResultSchema>;
+
+export const CourseRequestSchema = z
+  .object({
+    role: text(120).optional(),
+    seniority: z.enum(ids(SENIORITIES)),
+    topics: text(LIMITS.topicChars).optional(),
+    jobDescription: text(LIMITS.jobDescriptionChars).optional(),
+    profile: ProfileSchema.optional(),
+  })
+  .refine((request) => request.profile || request.topics);
+export type CourseRequest = z.infer<typeof CourseRequestSchema>;
+
+export const LessonRequestSchema = z.object({
+  skill: SkillSchema.omit({ quiz: true }),
+  builtOn: z.array(z.string().max(80)).max(8).default([]),
+  role: text(120).optional(),
+  seniority: z.enum(ids(SENIORITIES)),
+  profile: ProfileSchema.optional(),
+});
+export type LessonRequest = z.infer<typeof LessonRequestSchema>;
+
+export const CheckRequestSchema = z.object({
+  skill: z.string().max(80),
+  prompt: z.string().max(300),
+  keyPoints: z.array(z.string().max(200)).min(1).max(6),
+  explanation: text(LIMITS.answerChars).min(1),
+});
+export type CheckRequest = z.infer<typeof CheckRequestSchema>;
+
+export type SkillProgress = {
+  quiz?: "correct" | "wrong" | "unsure";
+  // Leitner box: 0 has never been explained back, and each pass moves it up and spaces the next review out.
+  level: number;
+  weak: boolean;
+  attempts: number;
+  dueAt?: number;
+  lastScore?: number;
+  reopenedBy?: string;
+};
+
+export type Course = CourseOutline & {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+  request: CourseRequest;
+  quizzedAt?: number;
+  progress: Record<string, SkillProgress>;
+  lessons: Record<string, Lesson>;
 };
 
 export type ApiErrorBody = {

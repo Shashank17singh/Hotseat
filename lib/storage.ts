@@ -1,10 +1,12 @@
 "use client";
 
 import { clear, createStore, del, entries, get, set } from "idb-keyval";
-import type { Session } from "./types";
+import { applyInterview } from "./learn";
+import type { Course, Session } from "./types";
 
 const sessions = createStore("hotseat-sessions", "sessions");
 const clips = createStore("hotseat-clips", "clips");
+const courses = createStore("hotseat-courses", "courses");
 
 const SETUP_KEY = "hotseat.setup";
 const SETTINGS_KEY = "hotseat.settings";
@@ -97,6 +99,30 @@ export async function deleteSession(session: Session) {
   await Promise.all(session.turns.map((turn) => del(clipKey(session.id, turn.id), clips)));
 }
 
+export const saveCourse = (course: Course) => set(course.id, course, courses);
+export const loadCourse = (id: string) => get<Course>(id, courses);
+export const deleteCourse = (id: string) => del(id, courses);
+
+export async function listCourses() {
+  const all = await entries<string, Course>(courses);
+  return all.map(([, course]) => course).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+// Sends a finished interview's weak answers back to the course it came from, and names the skills affected.
+export async function feedCourse(session: Session) {
+  if (!session.courseId) return [];
+  try {
+    const course = await loadCourse(session.courseId);
+    if (!course) return [];
+    const result = applyInterview(course, session, Date.now());
+    await saveCourse(result.course);
+    return result.reopened;
+  } catch {
+    // The report is what the visitor is waiting for, and it must not fail over this.
+    return [];
+  }
+}
+
 export async function deleteEverything() {
-  await Promise.all([clear(sessions), clear(clips)]);
+  await Promise.all([clear(sessions), clear(clips), clear(courses)]);
 }
