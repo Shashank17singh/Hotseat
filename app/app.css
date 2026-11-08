@@ -8,13 +8,12 @@
 @import url("./styles/base.css");
 
 :root {
-  --color-print-paper: oklch(99% 0.003 80); --color-print-ink: oklch(18% 0.01 40); --color-print-muted: oklch(42% 0.02 50);
-  --color-print-well: oklch(95% 0.006 80); --color-print-rule: oklch(20% 0.01 40 / 0.18);
-  --heat-print-5: oklch(62% 0.17 56); --heat-print-6: oklch(52% 0.15 70);
+  --color-print-paper: oklch(99% 0.003 255); --color-print-ink: oklch(18% 0.02 262); --color-print-muted: oklch(42% 0.025 258);
+  --color-print-well: oklch(95% 0.01 255); --color-print-rule: oklch(20% 0.02 262 / 0.18);
+  --heat-print-5: oklch(55% 0.18 259); --heat-print-6: oklch(45% 0.16 262);
 }
 
-@font-face { font-family: "Boska"; src: url("/fonts/boska-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
-@font-face { font-family: "Geist"; src: url("/fonts/geist.woff2") format("woff2"); font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("/fonts/geist.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 
 /* Shell */
@@ -22,7 +21,7 @@
 .skip:focus-visible { top: var(--space-md); }
 .topbar { position: sticky; top: 0; z-index: var(--z-sticky-nav); background: var(--color-paper); border-bottom: var(--rule-hair) solid var(--color-rule); }
 .topbar__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); min-height: 64px; }
-.wordmark { font-family: var(--font-body); font-weight: 500; font-size: var(--text-xl); letter-spacing: var(--tracking-display); text-decoration: none; }
+.wordmark { font-family: var(--font-body); font-weight: 600; font-size: var(--text-xl); letter-spacing: var(--tracking-display); text-decoration: none; }
 .topbar__links { display: flex; align-items: center; gap: var(--space-xs); }
 .navlink { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-sm); color: var(--color-ink-2); text-decoration: none; font-size: var(--text-sm); font-weight: 500; border-radius: var(--radius-pill); transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out); }
 .navlink:hover { background: var(--color-paper-2); color: var(--color-ink); }
