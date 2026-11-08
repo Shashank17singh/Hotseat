@@ -1,8 +1,6 @@
-<div align="center">
+# Hotseat
 
-# Hotseat - AI Mock Interview Platform
-
-**A spoken mock interview that builds questions from your resume, presses you with follow-ups, and scores every answer. Runs in the browser with your mic and camera.**
+A spoken mock interview that builds questions from your resume, presses you with follow-ups, and scores every answer. Runs in the browser with your mic and camera.
 
 ```
 Interviewer: "You led the move from cron jobs to a queue. What failed first?"
@@ -11,16 +9,6 @@ Interviewer: "How did you test that the keys actually held under load?"
 ```
 
 Each question builds on what you just said, and the report scores only what you actually answered.
-
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Groq](https://img.shields.io/badge/Groq-openai--gpt--oss--120b-F55036?style=for-the-badge&logoColor=white)](https://groq.com/)
-[![Whisper](https://img.shields.io/badge/Whisper-Speech%20to%20Text-412991?style=for-the-badge&logoColor=white)](https://console.groq.com/docs/speech-to-text)
-[![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://hotseat-black-chi.vercel.app/)
-
-</div>
-
----
 
 ## Overview
 
