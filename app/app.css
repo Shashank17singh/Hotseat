@@ -173,7 +173,8 @@ textarea.input { min-height: 120px; line-height: 1.55; resize: vertical; }
 /* Learn */
 .path { display: grid; list-style: none; margin: 0; padding: 0; }
 .path li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2xs) var(--space-md); align-items: baseline; padding-block: var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule); }
-.path a { font-weight: 500; }
+/* The whole line is the tap target, not only the words, to match the 44px of every other control. */
+.path a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 500; }
 .path__note { grid-column: 1 / -1; font-size: var(--text-sm); color: var(--color-muted); }
 .state { font-size: var(--text-sm); color: var(--color-muted); white-space: nowrap; }
 .state[data-state="review"], .state[data-state="weak"] { color: var(--color-focus); }
@@ -182,7 +183,7 @@ textarea.input { min-height: 120px; line-height: 1.55; resize: vertical; }
 .quiz .choices legend { font-size: var(--text-md); font-weight: 400; color: var(--color-ink); max-width: 65ch; }
 .lesson { display: grid; gap: var(--space-sm); max-width: 68ch; }
 .result { display: grid; gap: var(--space-sm); padding: var(--space-md); margin-top: var(--space-md); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-well); }
-.result .figure { font-size: var(--text-2xl); }
+.result .figure { font-size: var(--text-2xl); font-variant-numeric: lining-nums tabular-nums; }
 
 .skeleton { height: 96px; background: var(--color-paper-2); border-radius: var(--radius-well); }
 .empty { display: grid; justify-items: start; gap: var(--space-sm); padding-block: var(--space-xl); }
@@ -204,9 +205,17 @@ textarea.input { min-height: 120px; line-height: 1.55; resize: vertical; }
   .wide-only { display: none; }
   .narrow-only { display: inline; }
 }
+/* Four links and the button overran common phones (375 to 400px), so the bar tightens before it gives up the button. */
+@media (max-width: 26rem) {
+  .topbar .wordmark { font-size: var(--text-lg); }
+  .topbar__links .navlink { padding: 0 var(--space-2xs); }
+  .topbar__links .btn { padding: 0 var(--space-xs); }
+}
 @media (max-width: 23rem) {
   .topbar__links .btn { display: none; }
 }
+/* Keyboard focus scrolls clear of the sticky action bar, which wraps to two rows on a phone. */
+html:has(.summary-bar) { scroll-padding-bottom: 8rem; }
 @media print {
   .topbar, .btn-row, .summary-bar { display: none; }
   :root {

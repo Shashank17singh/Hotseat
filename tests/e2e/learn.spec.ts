@@ -220,6 +220,34 @@ test("a course can be deleted and is removed by the data wipe", async ({ page })
   await expect(page.getByRole("heading", { name: "Your courses" })).toHaveCount(0);
 });
 
+test("the top bar fits common phone widths with room to spare", async ({ page }) => {
+  for (const width of [375, 390, 414]) {
+    await page.setViewportSize({ width, height: 740 });
+    await page.goto("/learn");
+    const right = await page.locator(".topbar__links").evaluate((el) => el.getBoundingClientRect().right);
+    expect(right, `at ${width}px`).toBeLessThanOrEqual(width - 8);
+    await expect(page.getByRole("link", { name: "Interview", exact: true })).toBeVisible();
+  }
+});
+
+test("keyboard focus is not hidden behind the sticky action bar", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page.goto("/learn");
+  await page.getByLabel("Topics").focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Target role")).toBeFocused();
+  const field = await page.getByLabel("Target role").boundingBox();
+  const bar = await page.locator(".summary-bar").boundingBox();
+  expect((field?.y ?? 0) + (field?.height ?? 0)).toBeLessThanOrEqual(bar?.y ?? 0);
+});
+
+test("course map links are full-size tap targets", async ({ page }) => {
+  await buildCourse(page);
+  await page.getByRole("button", { name: "Skip this and start from the top" }).click();
+  const box = await page.getByRole("link", { name: "Database indexes", exact: true }).boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+});
+
 test("the course and lesson pages have no horizontal scroll on a phone", async ({ page }) => {
   await buildCourse(page);
   await page.getByRole("button", { name: "Skip this and start from the top" }).click();

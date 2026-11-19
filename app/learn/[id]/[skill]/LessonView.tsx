@@ -82,9 +82,9 @@ export function LessonView({ courseId, skillId }: { courseId: string; skillId: s
     <>
       <div className="page__head">
         <div>
-          <p className="page__sub"><Link href={`/learn/${course.id}`}>{course.title}</Link></p>
           <h1>{skill.name}</h1>
           {skill.claim && <p className="page__sub">Your resume says: {skill.claim}</p>}
+          <p className="page__sub"><Link href={`/learn/${course.id}`}>Back to {course.title}</Link></p>
         </div>
       </div>
       {error !== undefined && <Notice error={error} onRetry={() => void teach(course, skill)} />}
@@ -209,7 +209,7 @@ function LessonBody({ course, skill, lesson, onCourse, rechecking, onRecheck }: 
 
         {result && (
           <div className="result" role="status" data-testid="check-result">
-            <p><span className="figure">{Math.round(result.score)}</span> {passed ? "You have got this one." : "Not there yet."}</p>
+            <p><span className="figure">{Math.round(result.score)}</span> out of 100. {passed ? "You have got this one." : `Not there yet. You pass at ${PASS_SCORE}.`}</p>
             {result.feedback && <p>{result.feedback}</p>}
             {result.missed.length > 0 && (
               <div>
