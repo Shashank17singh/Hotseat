@@ -1,13 +1,13 @@
-/* Hallmark · shape: Narrative Workflow · genre: atmospheric · theme: Kiln (deal 2/3, seed mock-interview-practice-room-bbfb·1369eea8·2026-10-31·r0) · job: try · draw: 33db27
- * hero: Counter · nav: floating pill · footer: mast · imagery: the product · signature: the heat dial that starts a real interview from the first screen · kiln: ember
- * axes: dark/high-contrast-serif/warm · posture: full-palette · contrast: pass · fold: pass · v2.0.0 */
-/* Hallmark · pre-emit critique: P4 H4 E4 S5 R5 V4 · weakest: P, a practice tool invites hype, so the page shows one resume line pressed at four heats instead of promising outcomes */
 @import url("./styles/tokens.css");
 @import url("./styles/base.css");
 
-.land-nav { position: sticky; top: var(--space-sm); z-index: var(--z-sticky-nav); display: flex; justify-content: center; padding-inline: var(--space-md); }
+.land-nav { position: sticky; top: var(--space-sm); z-index: var(--z-sticky-nav); display: flex; flex-direction: column; align-items: center; padding-inline: var(--space-md); }
 .land-nav__pill { display: flex; align-items: center; gap: var(--space-md); min-height: 60px; padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-lg); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-pill); }
 .land-nav__links { display: flex; align-items: center; gap: var(--space-2xs); }
+.land-nav__toggle { display: none; min-height: 40px; padding: 0 var(--space-md); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-pill); background: var(--color-paper-3); color: var(--color-ink); font-size: var(--text-sm); font-weight: 500; cursor: pointer; }
+.land-nav__mobile-menu { display: flex; flex-direction: column; gap: var(--space-xs); width: 100%; max-width: 420px; margin-top: var(--space-xs); padding: var(--space-md); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+.land-nav__mobile-menu .navlink { display: flex; align-items: center; min-height: 44px; padding: 0 var(--space-sm); border-radius: var(--radius-pill); }
+.land-nav__mobile-menu .btn { width: 100%; margin-top: var(--space-xs); }
 
 .hero { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-2xl); align-items: center; min-height: min(calc(100dvh - 84px), 780px); padding-block: var(--space-xl); }
 .hero h1 { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--tracking-display); }
@@ -66,4 +66,5 @@
 @media (max-width: 40rem) {
   .land-nav__pill { width: 100%; justify-content: space-between; padding-left: var(--space-md); }
   .land-nav__links .navlink { display: none; }
+  .land-nav__toggle { display: inline-flex; align-items: center; }
 }

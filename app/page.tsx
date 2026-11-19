@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeatCurve } from "@/components/HeatCurve";
+import { LandingNav } from "@/components/LandingNav";
 import { DIFFICULTIES, ROLE_GROUPS } from "@/lib/catalog";
 import { Pressure } from "./Pressure";
 import "./landing.css";
@@ -16,17 +17,7 @@ export default function Home() {
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
-      <header className="land-nav">
-        <div className="land-nav__pill">
-          <Link href="/" className="wordmark">Hotseat</Link>
-          <nav className="land-nav__links" aria-label="Main">
-            <a className="navlink" href="#how">How it works</a>
-            <Link className="navlink" href="/learn">Learn</Link>
-            <Link className="navlink" href="/history">History</Link>
-            <Link className="btn" href="/setup">Start practising</Link>
-          </nav>
-        </div>
-      </header>
+      <LandingNav />
 
       <main id="main" className="container">
         <section className="hero">
@@ -143,6 +134,15 @@ export default function Home() {
           <Link className="navlink" href="/history">History</Link>
           <Link className="navlink" href="/settings">Settings and privacy</Link>
         </nav>
+        <div style={{ marginTop: "var(--space-xl)", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "var(--space-md)", color: "var(--color-muted)", fontSize: "var(--text-sm)", borderTop: "var(--rule-hair) solid var(--color-rule)", paddingTop: "var(--space-md)" }}>
+          <p suppressHydrationWarning>© {new Date().getFullYear()} Hotseat. Built by Shashank Singh.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-md)" }}>
+            <a className="navlink" href="https://github.com/Shashank17singh/Hotseat" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a className="navlink" href="https://shashank17singh.github.io" target="_blank" rel="noopener noreferrer">Portfolio</a>
+            <a className="navlink" href="mailto:shashanksingh1709@gmail.com">Contact</a>
+            <a className="navlink" href="tel:+917905851722">+91 79058 51722</a>
+          </div>
+        </div>
       </footer>
     </>
   );
