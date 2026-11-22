@@ -139,7 +139,7 @@ export default function Home() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-md)" }}>
             <a className="navlink" href="https://github.com/Shashank17singh/Hotseat" target="_blank" rel="noopener noreferrer">GitHub</a>
             <a className="navlink" href="https://shashank17singh.github.io" target="_blank" rel="noopener noreferrer">Portfolio</a>
-            <a className="navlink" href="mailto:shashanksingh1709@gmail.com">Contact</a>
+            <a className="navlink" href="https://mail.google.com/mail/?view=cm&fs=1&to=shashanksingh1709@gmail.com" target="_blank" rel="noopener noreferrer">Contact</a>
             <a className="navlink" href="tel:+917905851722">+91 79058 51722</a>
           </div>
         </div>
