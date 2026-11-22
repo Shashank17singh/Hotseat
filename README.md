@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="logo.svg" width="72" height="72" alt="Hotseat Logo" />
-</p>
-
 # Hotseat
 
 A spoken mock interview that builds questions from your resume, presses you with follow-ups, and scores every answer. Runs in the browser with your mic and camera.
