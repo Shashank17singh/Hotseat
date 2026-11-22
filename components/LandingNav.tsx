@@ -9,7 +9,15 @@ export function LandingNav() {
   return (
     <header className="land-nav">
       <div className="land-nav__pill">
-        <Link href="/" className="wordmark">Hotseat</Link>
+        <Link href="/" className="wordmark inline-flex items-center gap-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#0b0f1a] shadow-sm ring-1 ring-orange-500/25" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6.5 23L12.5 18.5L18 20.5L25.5 9" stroke="#f97316" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="25.5" cy="9" r="2.5" fill="#f97316"/>
+            </svg>
+          </span>
+          <span>Hotseat</span>
+        </Link>
         <nav className="land-nav__links" aria-label="Main">
           <a className="navlink" href="#how">How it works</a>
           <Link className="navlink" href="/learn">Learn</Link>
