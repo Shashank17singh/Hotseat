@@ -229,11 +229,11 @@ Live production deployment: [hotseat-black-chi.vercel.app](https://hotseat-black
 
 ---
 
-## Known Limitations
+## Operational Considerations & Limitations
 
-- Speech-to-text transcription and audio analysis are tuned for English language input.
-- System voice synthesis relies on client Web Speech API synthesizers and may vary between browser vendors.
-- Audio and video analysis occurs entirely in browser memory; device performance may affect high-framerate MediaPipe detection on low-end hardware.
+- **Language Scope**: Automated speech recognition and semantic interview evaluation are currently optimized for English-language technical interviews.
+- **Browser Speech Synthesis**: Voice synthesis utilizes the host browser's native Web Speech API, with voice timbres dependent on the client operating system and browser engine.
+- **Client-Side Edge Inference**: Computer vision and posture analysis execute client-side via WebAssembly and MediaPipe; processing throughput depends on the user device's CPU/GPU acceleration.
 
 ---
 
